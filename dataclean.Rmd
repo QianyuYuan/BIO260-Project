@@ -54,7 +54,7 @@ missing<-data.frame(n.na=sapply(business_simple, function(x) sum(is.na(x))))
 ##choosing the variables with n(NA)< 500
 
 ## select variables
-business_clean<-business_simple%>%select(business_id,full_address,zip,categories,city,review_count,neighborhoods,longitude,state,stars,latitude,`attributes.Price Range`,`attributes.Accepts Credit Cards`)
+business_clean<-business_simple%>%select(business_id,full_address,zip,city,review_count,neighborhoods,longitude,state,stars,latitude,`attributes.Price Range`,`attributes.Accepts Credit Cards`)
 colnames(business_clean)[12] <- "Price"
 ```
 
@@ -83,6 +83,7 @@ business_review<-business_clean%>%
   left_join(review_clean,by="business_id")
 joined<-left_join(business_review,user_clean,by="user_id")
 ```
+
 
 
 
