@@ -16,15 +16,73 @@ tip<-readRDS("yelp_academic_dataset_tip.rds")
 ```
 
 clean the business data:
-
+1.Choose the resaurant with review counts more than 20:
 ```{r}
 library(dplyr)
-business_simple<-business%>%
-  filter(city%in%c("Pittsburgh","Charlotte", "Urbana","Champaign",
-                   "Phoenix", "Las Vegas", "Madison"))%>%
-  filter(grepl("Restautrant|Food|Breakfast|Lunch|Dinner",categories))
+business_simple<-business%>%filter(grepl("Restautrant|Food|Breakfast",categories))%>%filter(review_count>20)
+```
 
+2. Choose the city: select 6 states in USA ( PA,NC,IL,AZ,NV,WI) 
+```{r}
+PA<-business_simple%>%filter(state%in%c("PA"))%>%group_by(city)%>%summarize(n=n())%>%filter(n>100)
+##only Pittsburgh
+NC<-business_simple%>%filter(state%in%c("NC"))%>%group_by(city)%>%summarize(n=n())%>%filter(n>100)
+##only Charlotte
+IL<-business_simple%>%filter(state%in%c("IL"))%>%group_by(city)%>%summarize(n=n())
+## Champaign Urbana have restautant less than 100, this may becuase the city is small
+AZ<-business_simple%>%filter(state%in%c("AZ"))%>%group_by(city)%>%summarize(n=n())%>%filter(n>100)
+## Phoenix Scottsdale Tempe Mesa Chandler Gilbert Glendale
+NV<-business_simple%>%filter(state%in%c("NV"))%>%group_by(city)%>%summarize(n=n())%>%filter(n>100)
+## Las Vegas Henderson
+WI<-business_simple%>%filter(state%in%c("WI"))%>%group_by(city)%>%summarize(n=n())%>%filter(n>100)
+## Madison
+
+business_simple<-business_simple%>%
+  filter(city%in%c("Pittsburgh","Charlotte","Urbana","Champaign","Phoenix", "Scottsdale","Tempe","Mesa", "Chandler","Gilbert","Glendale", "Las Vegas","Henderson", "Madison"))
+  
 business_simple%>%group_by(city)%>%summarize(n())
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+3. select variables
+```{r}
+## extract the zip code from full address
+business_simple$zip <- lapply(strsplit(as.character(business_simple$full_address), "\\,"), "[", 2)
+business_simple$zip<-as.numeric(gsub("[[:alpha:]]", "", business_simple$zip))
+##calculate the number of missing values in each column
+missing<-data.frame(n.na=sapply(business_simple, function(x) sum(is.na(x)))) 
+
+##choosing the variables with n(NA)< 500
+
+## select variables
+business_clean<-business_simple%>%select(business_id,full_address,zip,categories,city,review_count,neighborhoods,longitude,state,stars,latitude,`attributes.Price Range`,`attributes.Accepts Credit Cards`)
+colnames(business_clean)[12] <- "Price"
+```
+
+clean tip data:
+
+```{r}
+tip_clean<-tip%>%select(business_id,user_id,date,text)
+```
+clean user data:
+
+```{r}
+user_clean<-user%>%select(user_id,review_count)
+colnames(user_clean)[2]<-"reviewcount_individual"
+```
+
+clean review data:
+
+```{r}
+review_clean<-review%>%select(business_id,user_id,date,text,stars)
+colnames(review_clean)[5]<-"star_individual"
+```
+
+combine data
+```{r}
+business_review<-business_clean%>%
+  left_join(review_clean,by="business_id")
+joined<-left_join(business_review,user_clean,by="user_id")
+```
+
+
+
