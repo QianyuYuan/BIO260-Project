@@ -26,8 +26,8 @@ colnames(income_zipdata)<-c("zip","income_zip")
 income_zipdata<-income_zipdata[-1,]
 
 ##bachelors degree of each zip code
-education_zipdata<-education_zip%>%select(GEO.id2,HD01_VD06)
-colnames(education_zipdata)<-c("zip","education_zip")
+education_zipdata<-education_zip%>%select(GEO.id2,HD01_VD06,HD01_VD07)
+colnames(education_zipdata)<-c("zip","bachelor","graduate")
 education_zipdata<-education_zipdata[-1,]
 
 ##median age of each zip code
