@@ -37,10 +37,20 @@ age_zipdata<-age_zipdata[-1,]
 
 ##combine restaurant and zipcode scale demographic data
 restaurant$zip <- as.factor(as.character(restaurant$zip ))
+restaurant<-restaurant[,-1]
 combine<-left_join(restaurant,population_zipdata,by="zip")
 combine<-left_join(combine,income_zipdata,by="zip")
 combine<-left_join(combine,education_zipdata,by="zip")
 combine<-left_join(combine,age_zipdata,by="zip")
+combine$population_zip <- as.numeric(as.character(combine$population_zip  ))
+combine$income_zip <- as.numeric(as.character(combine$income_zip  ))
+combine$education_zip <- as.numeric(as.character(combine$education_zip ))
+combine$age_zip <- as.numeric(as.character(combine$age_zip ))
+combine<-combine%>%mutate(edu_bachelor_zip=education_zip/population_zip)
+combine<-combine%>%filter(!is.na(population_zip)&!is.na(income_zip)&!is.na(education_zip)&!is.na(age_zip))
+data.frame(n.na=sapply(combine, function(x)sum(is.na(x)))) 
+
+write.csv(combine,file="combine.csv")
 ```
 
 
