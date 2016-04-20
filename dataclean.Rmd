@@ -24,17 +24,17 @@ business_simple<-business%>%filter(grepl("Restautrant|Food|Breakfast",categories
 
 2. Choose the city: select 6 states in USA ( PA,NC,IL,AZ,NV,WI) 
 ```{r}
-PA<-business_simple%>%filter(state%in%c("PA"))%>%group_by(city)%>%summarize(n=n())%>%filter(n>100)
+PA<-business_simple%>%filter(state%in%c("PA"))%>%group_by(city)%>%summarize(n=n())%>%filter(n>50)
 ##only Pittsburgh
-NC<-business_simple%>%filter(state%in%c("NC"))%>%group_by(city)%>%summarize(n=n())%>%filter(n>100)
+NC<-business_simple%>%filter(state%in%c("NC"))%>%group_by(city)%>%summarize(n=n())%>%filter(n>50)
 ##only Charlotte
 IL<-business_simple%>%filter(state%in%c("IL"))%>%group_by(city)%>%summarize(n=n())
 ## Champaign Urbana have restautant less than 100, this may becuase the city is small
-AZ<-business_simple%>%filter(state%in%c("AZ"))%>%group_by(city)%>%summarize(n=n())%>%filter(n>100)
+AZ<-business_simple%>%filter(state%in%c("AZ"))%>%group_by(city)%>%summarize(n=n())%>%filter(n>50)
 ## Phoenix Scottsdale Tempe Mesa Chandler Gilbert Glendale
-NV<-business_simple%>%filter(state%in%c("NV"))%>%group_by(city)%>%summarize(n=n())%>%filter(n>100)
+NV<-business_simple%>%filter(state%in%c("NV"))%>%group_by(city)%>%summarize(n=n())%>%filter(n>50)
 ## Las Vegas Henderson
-WI<-business_simple%>%filter(state%in%c("WI"))%>%group_by(city)%>%summarize(n=n())%>%filter(n>100)
+WI<-business_simple%>%filter(state%in%c("WI"))%>%group_by(city)%>%summarize(n=n())%>%filter(n>50)
 ## Madison
 
 business_simple<-business_simple%>%
@@ -55,7 +55,16 @@ missing<-data.frame(n.na=sapply(business_simple, function(x) sum(is.na(x))))
 
 ## select variables
 business_clean<-business_simple%>%select(business_id,full_address,zip,city,review_count,neighborhoods,longitude,state,stars,latitude,`attributes.Price Range`,`attributes.Accepts Credit Cards`)
-colnames(business_clean)[12] <- "Price"
+colnames(business_clean)[11] <- "Price"
+
+## fill in the blank zip code:
+fillzip<-read.csv("zipna.csv")
+fillzip<-fillzip%>%select(business_id,zip)
+colnames(business_clean)[3]<-"zip2"
+colnames(fillzip)[2]<-"zip3"
+business_clean<-left_join(business_clean,fillzip,by="business_id")
+business_clean<-mutate(business_clean,zip=ifelse(is.na(zip2),zip3,zip2))%>%select(-zip2,-zip3)%>%filter(!is.na(zip)&!is.na(Price))
+
 ```
 
 clean tip data:
@@ -84,6 +93,16 @@ business_review<-business_clean%>%
 joined<-left_join(business_review,user_clean,by="user_id")
 ```
 
+check the data by year:
+```{r}
+year<-as.numeric(format(as.Date(joined$date), "%Y")) 
+hist(year)
+```
 
+check the missing value
+```{r}
+data.frame(n.na=sapply(joined, function(x) sum(is.na(x)))) 
+restaurant <- data.frame(lapply(joined, as.character), stringsAsFactors=FALSE)
+write.csv(restaurant,file="restaurant.csv")
 
-
+```
