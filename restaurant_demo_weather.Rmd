@@ -207,7 +207,7 @@ weather<-fread("weather_clean.csv")
 weather$date<-as.Date(weather$date)
 combine_weather$date<-as.Date(combine_weather$date)
 combine_weather<-left_join(combine_weather,weather,by=c("STATION","date"))
-
-write.csv(combine_weather,file="combine.csv")
+restaurant_demo_weather<- data.frame(lapply(combine_weather, as.character), stringsAsFactors=FALSE)
+write.csv(restaurant_demo_weather,file="combine.csv")
 
 ```
