@@ -1,0 +1,61 @@
+---
+title: "Restaurant type"
+author: "HoJin Shin, Qianyu Yuan, Yi Wang"
+date: "2016³â 4¿ù 24ÀÏ"
+output: html_document
+---
+
+### We also need to combinde Urbana & Champaign. We may create a new name of those cities, Urbana_Champaign. Please check the below code~
+```{r}
+x<-x%>%mutate(city = ifelse(city=="Urbana", "Urbana_Champaign", city))%>%mutate(city = ifelse(city=="Champaign", "Urbana_Champaign", city)) 
+```
+
+### The below steps are for classifying the type of restaurant.
+```{r}
+x-read_csv("combinewithoutuser_complete.csv")
+
+
+asian<-x%>%filter(grepl("Asian|Chinese|Japanese|Sushi Bars|Indian|Korean|Vietnamese|Thai|Taiwanese|Mongolian|Cantonese|Cambodian|Szechuan|Laotian|Himalayan/Nepalese|Indonesian|Ramen|Teppanyaki|Burmese|Malaysian|Hot Pot|Sri Lankan|International|Oriental|Shanghainese|Curry Sausage|Wok|Fusion|Dim Sum|Filipino|Singaporean|Bangladeshi",categories)) %>% mutate(type="asian")
+rest<-test_com%>%anti_join(asian,by = c("business_id", "categories", "city", "review_count", "name", "neighborhoods", "state", "stars", "zip", "takeout", "reservation", "outdoorseating", "waiterservice", "creditcards", "goodforkids", "goodforgroups", "goodfordessert", "goodforlatenight", "goodforlunch", "goodfordinner", "goodforbrunch", "goodforbreakfast", "price", "parking", "noise", "alcohol", "wifi", "population_zip", "income_zip", "age_zip", "white", "Black.or.African.American", "American.Indian.and.Alaska.Native", "Asian", "Native.Hawaiian.and.Other.Pacific.Islander", "other", "education_zip"))
+
+
+bars<-rest%>%filter(grepl("Bars|Pubs|Lounges|Irish|Tapas/Small Plates|Wine Bars|Tapas Bars|Cocktail Bars|Gastropubs|Beer Bar|Champagne Bars|Irish Pub|Pub Food|Beer Garden|Beer Gardens|Beer Hall|Nightlife",categories)) %>% mutate(type="bars")
+rest<-rest%>%anti_join(bars,by = c("business_id", "categories", "city", "review_count", "name", "neighborhoods", "state", "stars", "zip", "takeout", "reservation", "outdoorseating", "waiterservice", "creditcards", "goodforkids", "goodforgroups", "goodfordessert", "goodforlatenight", "goodforlunch", "goodfordinner", "goodforbrunch", "goodforbreakfast", "price", "parking", "noise", "alcohol", "wifi", "population_zip", "income_zip", "age_zip", "white", "Black.or.African.American", "American.Indian.and.Alaska.Native", "Asian", "Native.Hawaiian.and.Other.Pacific.Islander", "other", "education_zip"))
+
+pizza<-rest%>%filter(grepl("Pizza",categories)) %>% mutate(type="pizza")
+rest<-rest%>%anti_join(pizza,by = c("business_id", "categories", "city", "review_count", "name", "neighborhoods", "state", "stars", "zip", "takeout", "reservation", "outdoorseating", "waiterservice", "creditcards", "goodforkids", "goodforgroups", "goodfordessert", "goodforlatenight", "goodforlunch", "goodfordinner", "goodforbrunch", "goodforbreakfast", "price", "parking", "noise", "alcohol", "wifi", "population_zip", "income_zip", "age_zip", "white", "Black.or.African.American", "American.Indian.and.Alaska.Native", "Asian", "Native.Hawaiian.and.Other.Pacific.Islander", "other", "education_zip"))
+
+
+fastfood<-rest%>%filter(grepl("Burgers|Sandwiches|Fast Food|Hot Dogs|Food Stands|Pita|Street Vendors",categories)) %>% mutate(type="fastfood")
+rest<-rest%>%anti_join(fastfood,by = c("business_id", "categories", "city", "review_count", "name", "neighborhoods", "state", "stars", "zip", "takeout", "reservation", "outdoorseating", "waiterservice", "creditcards", "goodforkids", "goodforgroups", "goodfordessert", "goodforlatenight", "goodforlunch", "goodfordinner", "goodforbrunch", "goodforbreakfast", "price", "parking", "noise", "alcohol", "wifi", "population_zip", "income_zip", "age_zip", "white", "Black.or.African.American", "American.Indian.and.Alaska.Native", "Asian", "Native.Hawaiian.and.Other.Pacific.Islander", "other", "education_zip"))
+
+
+cafe<-rest%>%filter(grepl("Coffee|Tea|Cafes|Bakeries|Desserts|Ice Cream & Frozen Yogurt|Bagels|Donuts|Candy Stores|Chocolatiers & Shops|Cheese Shops|Tea Rooms|Juice Bars & Smoothies|Popcorn Shops|Cupcakes|Pretzels|Fruits & Veggies|Gelato|Coffeeshops|Macarons|Patisserie/Cake Shop|Creperies|Bubble Tea",categories)) %>% mutate(type="cafe")
+rest<-rest%>%anti_join(cafe,by = c("business_id", "categories", "city", "review_count", "name", "neighborhoods", "state", "stars", "zip", "takeout", "reservation", "outdoorseating", "waiterservice", "creditcards", "goodforkids", "goodforgroups", "goodfordessert", "goodforlatenight", "goodforlunch", "goodfordinner", "goodforbrunch", "goodforbreakfast", "price", "parking", "noise", "alcohol", "wifi", "population_zip", "income_zip", "age_zip", "white", "Black.or.African.American", "American.Indian.and.Alaska.Native", "Asian", "Native.Hawaiian.and.Other.Pacific.Islander", "other", "education_zip"))
+
+
+special<-rest%>%filter(grepl("Kosher|Halal",categories)) %>% mutate(type="special")
+rest<-rest%>%anti_join(special,by = c("business_id", "categories", "city", "review_count", "name", "neighborhoods", "state", "stars", "zip", "takeout", "reservation", "outdoorseating", "waiterservice", "creditcards", "goodforkids", "goodforgroups", "goodfordessert", "goodforlatenight", "goodforlunch", "goodfordinner", "goodforbrunch", "goodforbreakfast", "price", "parking", "noise", "alcohol", "wifi", "population_zip", "income_zip", "age_zip", "white", "Black.or.African.American", "American.Indian.and.Alaska.Native", "Asian", "Native.Hawaiian.and.Other.Pacific.Islander", "other", "education_zip"))
+
+
+middle_estern<-rest%>%filter(grepl("Middle Eastern|Persian/Iranian|Armenian|Moroccan|Falafel|Turkish|Afghan|Arabian|Egyptian|Kebab",categories)) %>% mutate(type="middle_estern")
+rest<-rest%>%anti_join(middle_estern,by = c("business_id", "categories", "city", "review_count", "name", "neighborhoods", "state", "stars", "zip", "takeout", "reservation", "outdoorseating", "waiterservice", "creditcards", "goodforkids", "goodforgroups", "goodfordessert", "goodforlatenight", "goodforlunch", "goodfordinner", "goodforbrunch", "goodforbreakfast", "price", "parking", "noise", "alcohol", "wifi", "population_zip", "income_zip", "age_zip", "white", "Black.or.African.American", "American.Indian.and.Alaska.Native", "Asian", "Native.Hawaiian.and.Other.Pacific.Islander", "other", "education_zip"))
+
+
+latin<-rest%>%filter(grepl("Mexican|Colombian|Brazilian|Empanadas|Haitian|Dominican|Puerto Rican|Venezuelan|Cuban|Latin American",categories)) %>% mutate(type="latin")
+rest<-rest%>%anti_join(latin,by = c("business_id", "categories", "city", "review_count", "name", "neighborhoods", "state", "stars", "zip", "takeout", "reservation", "outdoorseating", "waiterservice", "creditcards", "goodforkids", "goodforgroups", "goodfordessert", "goodforlatenight", "goodforlunch", "goodfordinner", "goodforbrunch", "goodforbreakfast", "price", "parking", "noise", "alcohol", "wifi", "population_zip", "income_zip", "age_zip", "white", "Black.or.African.American", "American.Indian.and.Alaska.Native", "Asian", "Native.Hawaiian.and.Other.Pacific.Islander", "other", "education_zip"))
+
+
+african<-rest%>%filter(grepl("Ethiopian|African",categories)) %>% mutate(type="african")
+rest<-rest%>%anti_join(african,by = c("business_id", "categories", "city", "review_count", "name", "neighborhoods", "state", "stars", "zip", "takeout", "reservation", "outdoorseating", "waiterservice", "creditcards", "goodforkids", "goodforgroups", "goodfordessert", "goodforlatenight", "goodforlunch", "goodfordinner", "goodforbrunch", "goodforbreakfast", "price", "parking", "noise", "alcohol", "wifi", "population_zip", "income_zip", "age_zip", "white", "Black.or.African.American", "American.Indian.and.Alaska.Native", "Asian", "Native.Hawaiian.and.Other.Pacific.Islander", "other", "education_zip"))
+
+
+vegetarian<-rest%>%filter(grepl("Vegan|Vegetarian",categories)) %>% mutate(type="vegetarian")
+rest<-rest%>%anti_join(vegetarian,by = c("business_id", "categories", "city", "review_count", "name", "neighborhoods", "state", "stars", "zip", "takeout", "reservation", "outdoorseating", "waiterservice", "creditcards", "goodforkids", "goodforgroups", "goodfordessert", "goodforlatenight", "goodforlunch", "goodfordinner", "goodforbrunch", "goodforbreakfast", "price", "parking", "noise", "alcohol", "wifi", "population_zip", "income_zip", "age_zip", "white", "Black.or.African.American", "American.Indian.and.Alaska.Native", "Asian", "Native.Hawaiian.and.Other.Pacific.Islander", "other", "education_zip"))
+
+
+european<-rest%>%filter(grepl("Mediterranean|Italian|Portuguese|German|Polish|Greek|Ethnic Food|French|Fondue|Spanish|Russian|Belgian|Hungarian|Modern European|Scandinavian|Austrian|Czech|Slovakian|Scottish|Ukrainian|Serbo Croatian|Alsatian|Bavarian|Iberian|Rhinelandian|Eastern European|Swiss Food|Trinidadian",categories)) %>% mutate(type="european")
+american<-rest%>%anti_join(european,by = c("business_id", "categories", "city", "review_count", "name", "neighborhoods", "state", "stars", "zip", "takeout", "reservation", "outdoorseating", "waiterservice", "creditcards", "goodforkids", "goodforgroups", "goodfordessert", "goodforlatenight", "goodforlunch", "goodfordinner", "goodforbrunch", "goodforbreakfast", "price", "parking", "noise", "alcohol", "wifi", "population_zip", "income_zip", "age_zip", "white", "Black.or.African.American", "American.Indian.and.Alaska.Native", "Asian", "Native.Hawaiian.and.Other.Pacific.Islander", "other", "education_zip")) %>% mutate(type="american") 
+
+x <- asian %>% rbind(bars) %>% rbind(pizza) %>% rbind(fastfood) %>% rbind(cafe) %>% rbind(special) %>% rbind(middle_estern) %>% rbind(latin) %>% rbind(african) %>% rbind(vegetarian) %>% rbind(european) %>% rbind(american) %>% select(1:2,38,3:37)
+```
