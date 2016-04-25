@@ -21,8 +21,7 @@ clean the business data:
 library(dplyr)
 business_simple<-business%>%filter(grepl("Restautrant|Food|Breakfast|Bars|food|Burgers|Brunch|Sandwiches|Pubs|Chinese|Italian|American|Pizza|Coffee|Tea|Fast Food|Asian|Fusion|Lounges|Cafes|Irish|Gluten|Salad|Diners|Seafood|Bakeries|Desserts|Japanese|Ice Cream & Frozen Yogurt|Tapas/Small Plates|Mediterranean|Wine Bars|Vegetarian|Portuguese|German|Delis|Chicken Wings|Hot Dogs|Polish|Greek|Sushi Bars|Indian|Mexican|Bagels|Donuts|Tapas Bars|Cocktail Bars|Ethnic Food|Middle Eastern|Steakhouses|Cafeteria|Candy Stores|Korean|Chocolatiers & Shops|Cheese Shops|Vietnamese|Thai|Tea Rooms|Latin American|Creperies|French|Taiwanese|Buffets|Cajun/Creole|Soul Food|Juice Bars & Smoothies|Fondue|Ethiopian|Persian/Iranian|Popcorn Shops|Spanish|Cheesesteaks|Fish & Chips|British|Kosher|Armenian|Cupcakes|Vegan|Hawaiian|Cuban|Gastropubs|Russian|Pretzels|Fruits & Veggies|Gelato|Halal|Dim Sum|Filipino|Pasta Shops|Mongolian|Colombian|Cantonese|Street Vendors|Belgian|Cambodian|Hungarian|Szechuan|Bubble Tea|Laotian|African|Beer Bar|Himalayan/Nepalese|Moroccan|Falafel|Indonesian|Turkish|Afghan|Food Stands|Modern European|Irish Pub|Brazilian|Food Court|Malaysian|Coffeeshops|Hot Pot|Burmese|Macarons|Ramen|Empanadas|Bistros|Teppanyaki|Brasseries|Singaporean|Champagne Bars|Scandinavian|Canadian|Poutineries|Haitian|Arabian|Austrian|Czech|Slovakian|Bangladeshi|Egyptian|Dominican|Scottish|Patisserie/Cake Shop|Pub Food|Puerto Rican|Australian|Ukrainian|Sri Lankan|Beer Garden|International|Beer Gardens|Serbo Croatian|Kebab|Alsatian|Oriental|Shanghainese|Venezuelan|Bavarian|Iberian|Curry Sausage|Rhinelandian|Beer Hall|Eastern European|Wok|Trinidadian|Swiss Food|Pita",categories))%>%
   filter(!grepl("Grocery|Hotels",categories) &
-           !grepl("Supermarket|Pharmacy",name))%>%
-  filter(review_count>50)
+           !grepl("Supermarket|Pharmacy",name))
 ```
 
 2. Choose the city: select 6 states in USA ( PA,NC,IL,AZ,NV,WI) 
@@ -77,6 +76,7 @@ business_clean<-business_simple %>% select(business_id,categories,city,review_co
            !is.na(`attributes.Parking.lot`)&
            !is.na(`attributes.Parking.valet`)&
            !is.na(zip))
+
 business_clean$takeout<-as.numeric(business_clean$`attributes.Take-out`)
 business_clean$reservation<-as.numeric(business_clean$`attributes.Takes Reservations`)
 business_clean$outdoorseating<-as.numeric(business_clean$`attributes.Outdoor Seating`)
@@ -108,6 +108,7 @@ mutate(noise=ifelse(`attributes.Noise Level`=="quiet",0,
 
 
 ```
+
 add in type
 ```{r}
 asian<-business_clean%>%filter(grepl("Asian|Chinese|Japanese|Sushi Bars|Indian|Korean|Vietnamese|Thai|Taiwanese|Mongolian|Cantonese|Cambodian|Szechuan|Laotian|Himalayan/Nepalese|Indonesian|Ramen|Teppanyaki|Burmese|Malaysian|Hot Pot|Sri Lankan|International|Oriental|Shanghainese|Curry Sausage|Wok|Fusion|Dim Sum|Filipino|Singaporean|Bangladeshi",categories)) %>% mutate(type="asian")
@@ -151,33 +152,6 @@ american<-rest%>%anti_join(european,by = "business_id") %>% mutate(type="america
 business <- asian %>% rbind(bars) %>% rbind(pizza) %>% rbind(fastfood) %>% rbind(cafe) %>% rbind(special) %>% rbind(middle_estern) %>% rbind(latin) %>% rbind(african) %>% rbind(vegetarian) %>% rbind(european) %>% rbind(american) %>% select(1:2,28,3:27)
 ```
 
-clean tip data:
-
-```{r}
-tip_clean<-tip%>%select(business_id,user_id,date,text)
-```
-clean user data:
-
-```{r}
-user_clean<-user%>%select(user_id,review_count)
-colnames(user_clean)[2]<-"reviewcount_individual"
-```
-
-clean review data:
-
-```{r}
-review_clean<-review%>%select(business_id,user_id,date,stars)
-review_clean_txt<-review%>%select(business_id,user_id,date,text,stars)
-colnames(review_clean)[4]<-"star_individual"
-colnames(review_clean_txt)[5]<-"star_individual"
-```
-
-combine restaurant data
-```{r}
-business_review<-business%>%
-  left_join(review_clean,by="business_id")
-restaurant<-left_join(business_review,user_clean,by="user_id")
-```
 
 
 add in zipcode level demographic data
@@ -214,20 +188,20 @@ colnames(age_zipdata)<-c("zip","age_zip")
 age_zipdata<-age_zipdata[-1,]
 
 ##race of each zip code
-race_zipdata<-race_zip%>%select(GEO.id2,HD01_VD02,HD01_VD03,HD01_VD04,HD01_VD05,HD01_VD07)
-colnames(race_zipdata)<-c("zip","white","Black or African American","American Indian and Alaska Native","Asian","other")
+race_zipdata<-race_zip%>%select(GEO.id2,HD01_VD02,HD01_VD03,HD01_VD04,HD01_VD05,HD01_VD06,HD01_VD07)
+colnames(race_zipdata)<-c("zip","white","Black or African American","American Indian and Alaska Native","Asian","Native Hawaiian and Other Pacific Islander","other")
 race_zipdata<-race_zipdata[-1,]
 
 ##combine restaurant and zipcode scale demographic data
-restaurant$zip <- as.factor(as.character(restaurant$zip ))
+business$zip <- as.factor(as.character(business_clean$zip ))
 landsqmi$zip <- as.factor(as.character(landsqmi$zip ))
-combine<-left_join(restaurant,population_zipdata,by="zip")
+combine<-left_join(business,population_zipdata,by="zip")
 combine<-left_join(combine,income_zipdata,by="zip")
 combine<-left_join(combine,education_zipdata,by="zip")
 combine<-left_join(combine,age_zipdata,by="zip")
 combine<-left_join(combine,race_zipdata,by="zip")
 combine<-left_join(combine,landsqmi,by="zip")
-combine[, 33:41]<- sapply(combine[, 33:41], as.numeric)
+combine[, 29:38]<- sapply(combine[, 29:38], as.numeric)
 combine<-combine%>%
   mutate(popdensity_zip=population_zip/LANDSQMI)%>%
   mutate(education_zip=bachelor/population_zip)%>%
@@ -235,31 +209,13 @@ combine<-combine%>%
          `Black or African American`=`Black or African American`/population_zip,
          `American Indian and Alaska Native`=`American Indian and Alaska Native`/population_zip,
          Asian=Asian/population_zip,
+         `Native Hawaiian and Other Pacific Islander`=`Native Hawaiian and Other Pacific Islander`/population_zip,
          other=other/population_zip)
 combine<-combine%>%filter(!is.na(population_zip)&!is.na(income_zip)&!is.na(education_zip)&!is.na(age_zip))%>%select(-bachelor)
 data.frame(n.na=sapply(combine, function(x)sum(is.na(x)))) 
-```
 
-
-combine weather data:
-```{r}
-## add in station name
-combine_weather<-combine%>%
-  mutate(STATION=ifelse(city%in%c("Urbana","Champaign"),"GHCND:USC00118740 ",
-                ifelse(city%in%c("Phoenix","Scottsdale","Tempe","Mesa","Chandler","Gilbert","Glendale"), "GHCND:USW00023183",
-                       ifelse(city%in%c("Las Vegas","Henderson"),"GHCND:USW00023169",
-                              ifelse(city%in%c("Pittsburgh"),"GHCND:USW00094823",
-                                     ifelse(city%in%c("Madison"),"GHCND:USW00014837","GHCND:USW00013881"))))))
-
-library(data.table)
-weather<-fread("weather_clean_all_var.csv")
-weather<-weather%>%select(-STATION_NAME)
-colnames(weather)[2]<-"date"
-weather$date<-as.Date(weather$date)
-combine_weather$date<-as.Date(combine_weather$date)
-combine_weather<-left_join(combine_weather,weather,by=c("STATION","date"))%>%filter(!is.na(PRCP))
-
-restaurant_demo_weather<- data.frame(lapply(combine_weather, as.character), stringsAsFactors=FALSE)
-write.csv(restaurant_demo_weather,file="combine.csv",row.names=FALSE)
+combine$state[combine$business_id=="g49oTp73Pk_WpOfQVtmcew"] <- "NV"
+restaurant_demo<- data.frame(lapply(combine, as.character), stringsAsFactors=FALSE)
+write.csv(restaurant_demo,file="combinewithoutuser_complete.csv", row.names=FALSE)
 
 ```
