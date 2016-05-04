@@ -1,0 +1,587 @@
+---
+title: "BIO260 Final Project_Data cleaning & wrangling"
+author: "HoJin Shin, Qianyu Yuan, Yi Wang"
+date: "04 May 2016"
+output: html_document
+---
+
+
+## Data cleaning and wrangling
+
+Due to large file size, in this step, we would like to just show R code chunks without running them. At the end of the procedure, we will load final cleaned datasets for showing our anlayses.
+
+```{r}
+library(rjson)
+library(dplyr)
+library(readr)
+library(data.table)
+library(tidyr)
+library(knitr)
+library(ggplot2)
+library(ggrepel)
+library(broom)
+library(reshape2)
+library(caret)
+library(car)
+library(tidytext)
+library(gridExtra)
+```
+
+### Yelp dataset
+
+Yelp dataset was originally json format and first we changed it to csv or rds formats.
+
+```{r}
+# enable multicore processing
+library(doParallel)
+registerDoSEQ()
+cl <- makeCluster(detectCores(), type='PSOCK')
+registerDoParallel(cl)
+
+# function for
+# - reading JSON data format
+# - converting data frame to tbl_df
+# - saving data frame as local file
+fromJSONtoRDS <- function(sourcefile, destfile) {
+    # parse JSON
+    library(jsonlite)
+    data <- fromJSON(sprintf("[%s]",paste(readLines(sourcefile), collapse = ",")))
+    data <- data.frame(data)
+    data <- flatten(data)
+    # read data faster
+    library(dplyr)
+    data <- tbl_df(data)
+    # save file as RDS
+    saveRDS(data, destfile)
+}
+
+# business dataset
+fromJSONtoRDS(sourcefile = 'yelp_academic_dataset_business.json',
+              destfile = 'yelp_academic_dataset_business.rds')
+
+# review dataset
+fromJSONtoRDS(sourcefile = 'yelp_academic_dataset_review.json',
+              destfile = 'yelp_academic_dataset_review.rds')
+
+# disable multicore processing
+registerDoSEQ()
+```
+
+```{r, eval = FALSE}
+library(plyr)
+
+# .json to dataframe
+
+######clean tr.user#######
+tr.user <- "yelp_academic_dataset_user.json"
+con <- file(tr.user, "r")
+input <- readLines(con, -1L)
+close(con)
+tr.user <- ldply(lapply(input, function(x) t(unlist(fromJSON(x)))))
+save(tr.user, file= 'tr.user.rdata')
+
+user_simplified <- tr.user %>% select(yelping_since, votes.funny, votes.useful, votes.cool, review_count, name, user_id)
+
+write.csv(user_simplified, "user_simplified.csv", row.names = FALSE)
+```
+
+
+#### Load the dataset
+```{r, eval = FALSE}
+business<-readRDS("yelp_academic_dataset_business.rds")
+user<-read_csv("user_simplified.csv")
+review<-readRDS("yelp_academic_dataset_review.rds")
+```
+
+1. Restrict the dataset to restaurants
+
+Since there is no specific category in Yelp dataset to restrict business to only restaurants, we manually confirmed unique value of business 'categories' in Yelp dataset and obtained a dataset of restaurants.
+ 
+```{r, eval = FALSE}
+business_simple<-business%>%filter(grepl("Restautrant|Food|Breakfast|Bars|food|Burgers|Brunch|Sandwiches|Pubs|Chinese|Italian|American|Pizza|Coffee|Tea|Fast Food|Asian|Fusion|Lounges|Cafes|Irish|Gluten|Salad|Diners|Seafood|Bakeries|Desserts|Japanese|Ice Cream & Frozen Yogurt|Tapas/Small Plates|Mediterranean|Wine Bars|Vegetarian|Portuguese|German|Delis|Chicken Wings|Hot Dogs|Polish|Greek|Sushi Bars|Indian|Mexican|Bagels|Donuts|Tapas Bars|Cocktail Bars|Ethnic Food|Middle Eastern|Steakhouses|Cafeteria|Candy Stores|Korean|Chocolatiers & Shops|Cheese Shops|Vietnamese|Thai|Tea Rooms|Latin American|Creperies|French|Taiwanese|Buffets|Cajun/Creole|Soul Food|Juice Bars & Smoothies|Fondue|Ethiopian|Persian/Iranian|Popcorn Shops|Spanish|Cheesesteaks|Fish & Chips|British|Kosher|Armenian|Cupcakes|Vegan|Hawaiian|Cuban|Gastropubs|Russian|Pretzels|Fruits & Veggies|Gelato|Halal|Dim Sum|Filipino|Pasta Shops|Mongolian|Colombian|Cantonese|Street Vendors|Belgian|Cambodian|Hungarian|Szechuan|Bubble Tea|Laotian|African|Beer Bar|Himalayan/Nepalese|Moroccan|Falafel|Indonesian|Turkish|Afghan|Food Stands|Modern European|Irish Pub|Brazilian|Food Court|Malaysian|Coffeeshops|Hot Pot|Burmese|Macarons|Ramen|Empanadas|Bistros|Teppanyaki|Brasseries|Singaporean|Champagne Bars|Scandinavian|Canadian|Poutineries|Haitian|Arabian|Austrian|Czech|Slovakian|Bangladeshi|Egyptian|Dominican|Scottish|Patisserie/Cake Shop|Pub Food|Puerto Rican|Australian|Ukrainian|Sri Lankan|Beer Garden|International|Beer Gardens|Serbo Croatian|Kebab|Alsatian|Oriental|Shanghainese|Venezuelan|Bavarian|Iberian|Curry Sausage|Rhinelandian|Beer Hall|Eastern European|Wok|Trinidadian|Swiss Food|Pita",categories))%>%
+  filter(!grepl("Grocery|Hotels",categories) &
+         !grepl("Supermarket|Pharmacy",name))
+```
+
+2. Select 13 cities of 6 states in USA (PA,NC,IL,AZ,NV,WI) 
+
+```{r, eval = FALSE}
+business_simple<-business_simple%>%mutate(city = ifelse(city=="Urbana", "Urbana_Champaign", city))%>%mutate(city = ifelse(city=="Champaign", "Urbana_Champaign", city))
+business_simple$state[business_simple$business_id=="g49oTp73Pk_WpOfQVtmcew"] <- "NV"
+business_simple<-business_simple%>%
+  filter(city%in%c("Pittsburgh","Charlotte","Urbana_Champaign","Phoenix", "Scottsdale","Tempe","Mesa", "Chandler","Gilbert","Glendale", "Las Vegas","Henderson", "Madison"))
+```
+
+3. Creating new variables and restrict data to complete values
+```{r, eval = FALSE}
+## Extract zip codes from full addresses
+business_simple$zip <- lapply(strsplit(as.character(business_simple$full_address), "\\,"), "[", 2)
+business_simple$zip<-as.numeric(gsub("[[:alpha:]]", "", business_simple$zip))
+
+## Select variables
+business_clean<-business_simple %>% select(business_id,categories,city,review_count,name,neighborhoods,longitude,state,stars,latitude,`attributes.Take-out`,`attributes.Noise Level`,`attributes.Takes Reservations`,`attributes.Outdoor Seating`,`attributes.Alcohol`,`attributes.Waiter Service`,`attributes.Accepts Credit Cards`,`attributes.Good for Kids`,`attributes.Good For Groups`,`attributes.Price Range`,`attributes.Wi-Fi`,`attributes.Good For.dessert`,`attributes.Good For.latenight`,`attributes.Good For.lunch`,`attributes.Good For.dinner`,`attributes.Good For.brunch`,`attributes.Good For.breakfast`,`attributes.Parking.garage`,`attributes.Parking.street`,`attributes.Parking.validated`,`attributes.Parking.lot`,`attributes.Parking.valet`,zip)%>%
+  filter(!is.na(`attributes.Take-out`)&
+           !is.na(`attributes.Noise Level`)&
+           !is.na(`attributes.Takes Reservations`)&
+           !is.na(`attributes.Outdoor Seating`)&
+           !is.na(`attributes.Alcohol`)&
+           !is.na(`attributes.Waiter Service`)&
+           !is.na(`attributes.Accepts Credit Cards`)&
+           !is.na(`attributes.Good for Kids`)&
+           !is.na(`attributes.Good For Groups`)&
+           !is.na(`attributes.Price Range`)&
+           !is.na(`attributes.Wi-Fi`)&
+           !is.na(`attributes.Good For.dessert`)&
+           !is.na(`attributes.Good For.latenight`)&
+           !is.na(`attributes.Good For.lunch`)&
+           !is.na(`attributes.Good For.dinner`)&
+           !is.na(`attributes.Good For.brunch`)&
+           !is.na(`attributes.Good For.breakfast`)&
+           !is.na(`attributes.Parking.garage`)&
+           !is.na(`attributes.Parking.street`)&
+           !is.na(`attributes.Parking.validated`)&
+           !is.na(`attributes.Parking.lot`)&
+           !is.na(`attributes.Parking.valet`)&
+           !is.na(zip))
+
+## Change names of variables
+business_clean$takeout<-as.numeric(business_clean$`attributes.Take-out`)
+business_clean$reservation<-as.numeric(business_clean$`attributes.Takes Reservations`)
+business_clean$outdoorseating<-as.numeric(business_clean$`attributes.Outdoor Seating`)
+business_clean$waiterservice<-as.numeric(business_clean$`attributes.Waiter Service`)
+business_clean$creditcards<-as.numeric(business_clean$`attributes.Accepts Credit Cards`)
+business_clean$goodforkids<-as.numeric(business_clean$`attributes.Good for Kids`)
+business_clean$goodforgroups<-as.numeric(business_clean$`attributes.Good For Groups`)
+business_clean$goodfordessert<-as.numeric(business_clean$`attributes.Good For.dessert`)
+business_clean$goodforlatenight<-as.numeric(business_clean$`attributes.Good For.latenight`)
+business_clean$goodforlunch<-as.numeric(business_clean$`attributes.Good For.lunch`)
+business_clean$goodfordinner<-as.numeric(business_clean$`attributes.Good For.dinner`)
+business_clean$goodforbrunch<-as.numeric(business_clean$`attributes.Good For.brunch`)
+business_clean$goodforbreakfast<-as.numeric(business_clean$`attributes.Good For.breakfast`)
+business_clean$price<-business_clean$`attributes.Price Range`
+
+## Recoding values as numeric
+business_clean<-business_clean%>%
+  mutate(parking=ifelse(`attributes.Parking.garage`==TRUE,1,
+                  ifelse(`attributes.Parking.validated`==TRUE,1,
+                  ifelse(`attributes.Parking.lot`==TRUE,1,
+                  ifelse(`attributes.Parking.valet`==TRUE,1,
+                  ifelse(`attributes.Parking.street`==TRUE,2,0))))),
+         noise=ifelse(`attributes.Noise Level`=="quiet",0,
+               ifelse(`attributes.Noise Level`=="average",1,
+               ifelse(`attributes.Noise Level`=="loud",2,3))),
+         alcohol= ifelse(`attributes.Alcohol`=="none",0,1),
+         wifi= ifelse(`attributes.Wi-Fi`=="no",0,
+               ifelse(`attributes.Wi-Fi`=="free",1,2)))%>%
+  select(business_id:latitude,zip:wifi)
+```
+
+4. Creating a variable - type of restaurant
+```{r, eval = FALSE}
+asian<-business_clean%>%filter(grepl("Asian|Chinese|Japanese|Sushi Bars|Indian|Korean|Vietnamese|Thai|Taiwanese|Mongolian|Cantonese|Cambodian|Szechuan|Laotian|Himalayan/Nepalese|Indonesian|Ramen|Teppanyaki|Burmese|Malaysian|Hot Pot|Sri Lankan|International|Oriental|Shanghainese|Curry Sausage|Wok|Fusion|Dim Sum|Filipino|Singaporean|Bangladeshi",categories)) %>% mutate(type="asian")
+rest<-business_clean%>%anti_join(asian,by ="business_id")
+
+bars<-rest%>%filter(grepl("Bars|Pubs|Lounges|Irish|Tapas/Small Plates|Wine Bars|Tapas Bars|Cocktail Bars|Gastropubs|Beer Bar|Champagne Bars|Irish Pub|Pub Food|Beer Garden|Beer Gardens|Beer Hall|Nightlife",categories)) %>% mutate(type="bars")
+rest<-rest%>%anti_join(bars,by ="business_id")
+
+pizza<-rest%>%filter(grepl("Pizza",categories)) %>% mutate(type="pizza")
+rest<-rest%>%anti_join(pizza,by = "business_id")
+
+fastfood<-rest%>%filter(grepl("Burgers|Sandwiches|Fast Food|Hot Dogs|Food Stands|Pita|Street Vendors",categories)) %>% mutate(type="fastfood")
+rest<-rest%>%anti_join(fastfood,by ="business_id")
+
+cafe<-rest%>%filter(grepl("Coffee|Tea|Cafes|Bakeries|Desserts|Ice Cream & Frozen Yogurt|Bagels|Donuts|Candy Stores|Chocolatiers & Shops|Cheese Shops|Tea Rooms|Juice Bars & Smoothies|Popcorn Shops|Cupcakes|Pretzels|Fruits & Veggies|Gelato|Coffeeshops|Macarons|Patisserie/Cake Shop|Creperies|Bubble Tea",categories)) %>% mutate(type="cafe")
+rest<-rest%>%anti_join(cafe,by = "business_id")
+
+special<-rest%>%filter(grepl("Kosher|Halal",categories)) %>% mutate(type="special")
+rest<-rest%>%anti_join(special,by = "business_id")
+
+middle_estern<-rest%>%filter(grepl("Middle Eastern|Persian/Iranian|Armenian|Moroccan|Falafel|Turkish|Afghan|Arabian|Egyptian|Kebab",categories)) %>% mutate(type="middle_estern")
+rest<-rest%>%anti_join(middle_estern,by ="business_id")
+
+latin<-rest%>%filter(grepl("Mexican|Colombian|Brazilian|Empanadas|Haitian|Dominican|Puerto Rican|Venezuelan|Cuban|Latin American",categories)) %>% mutate(type="latin")
+rest<-rest%>%anti_join(latin,by = "business_id")
+
+african<-rest%>%filter(grepl("Ethiopian|African",categories)) %>% mutate(type="african")
+rest<-rest%>%anti_join(african,by = "business_id")
+
+vegetarian<-rest%>%filter(grepl("Vegan|Vegetarian",categories)) %>% mutate(type="vegetarian")
+rest<-rest%>%anti_join(vegetarian,by = "business_id")
+
+european<-rest%>%filter(grepl("Mediterranean|Italian|Portuguese|German|Polish|Greek|Ethnic Food|French|Fondue|Spanish|Russian|Belgian|Hungarian|Modern European|Scandinavian|Austrian|Czech|Slovakian|Scottish|Ukrainian|Serbo Croatian|Alsatian|Bavarian|Iberian|Rhinelandian|Eastern European|Swiss Food|Trinidadian",categories)) %>% mutate(type="european")
+american<-rest%>%anti_join(european,by = "business_id") %>% mutate(type="american") 
+
+business <- asian %>% rbind(bars) %>% rbind(pizza) %>% rbind(fastfood) %>% rbind(cafe) %>% rbind(special) %>% rbind(middle_estern) %>% rbind(latin) %>% rbind(african) %>% rbind(vegetarian) %>% rbind(european) %>% rbind(american) %>% select(1,30,3,8,11,7,10,4,9,12:29)
+```
+
+5. Clean user data
+
+```{r, eval = FALSE}
+user_clean<-user%>%select(user_id,review_count)
+colnames(user_clean)[2]<-"reviewcount_individual"
+```
+
+6. Clean review data
+
+```{r, eval = FALSE}
+review_clean<-review%>%select(business_id,user_id,date,stars)
+review_clean_txt<-review%>%select(business_id,user_id,date,text,stars)
+colnames(review_clean)[4]<-"star_individual"
+colnames(review_clean_txt)[5]<-"star_individual"
+```
+
+7. Combine business, user and review data
+
+```{r, eval = FALSE}
+business_review <- business %>% left_join(review_clean_txt, by="business_id")
+business_review <- business_review %>% left_join(user_clean, by="user_id")
+```
+
+
+### Demographics dataset
+
+We added zip code level demographic data in our anlaysis.
+
+#### Load the dataset
+
+```{r, eval = FALSE}
+population_zip<-read_csv("population_zipcode_2009-2014.csv")
+income_zip<-read_csv("income_zipcode_2009-2014.csv")
+education_zip<-read_csv("education_zipcode_2009-2014.csv")
+age_zip<-read_csv("age_zipcode_2009-2014.csv")
+race_zip<-read_csv("race_zipcode_2009-2014.csv")
+landsqmi<-read_csv("zcta2010.csv")
+```
+
+1. Cleaning demographic data
+
+```{r, eval = FALSE}
+##population of each zip code
+population_zipdata<-population_zip%>%select(GEO.id2,HD01_VD01)
+colnames(population_zipdata)<-c("zip","population_zip")
+population_zipdata<-population_zipdata[-1,]
+
+##median income of each zip code
+income_zipdata<-income_zip%>%select(GEO.id2,HD01_VD02)
+colnames(income_zipdata)<-c("zip","income_zip")
+income_zipdata<-income_zipdata[-1,]
+
+##bachelors degree of each zip code
+education_zipdata<-education_zip%>%select(GEO.id2,HD01_VD06)
+colnames(education_zipdata)<-c("zip","bachelor")
+education_zipdata<-education_zipdata[-1,]
+
+##median age of each zip code
+age_zipdata<-age_zip%>%select(GEO.id2,HD01_VD02)
+colnames(age_zipdata)<-c("zip","age_zip")
+age_zipdata<-age_zipdata[-1,]
+
+##race of each zip code
+race_zipdata<-race_zip%>%select(GEO.id2,HD01_VD02,HD01_VD03,HD01_VD04,HD01_VD05,HD01_VD07)
+colnames(race_zipdata)<-c("zip","white","Black or African American","American Indian and Alaska Native","Asian","other")
+race_zipdata<-race_zipdata[-1,]
+```
+
+
+### Daily weather dataset
+
+Since each states have several different weather stations and not all daily summaries are available from each station, we choose a nearest weather station to each city of interest in each state. The location of stations were confirmed from [here](http://www.ncdc.noaa.gov/cdo-web/datatools/findstation) and following stations are chosen for our analysis.
+
+       STATION                            STATION_NAME
+1: GHCND:USC00118740                            CHAMPAIGN 3 S IL US
+2: GHCND:USW00023183 PHOENIX SKY HARBOR INTERNATIONAL AIRPORT AZ US
+3: GHCND:USW00023169 LAS VEGAS MCCARRAN INTERNATIONAL AIRPORT NV US
+4: GHCND:USW00094823         PITTSBURGH INTERNATIONAL AIRPORT PA US
+5: GHCND:USW00014837         MADISON DANE CO REGIONAL AIRPORT WI US
+6: GHCND:USW00013881                CHARLOTTE DOUGLAS AIRPORT NC US
+
+```{r, eval = FALSE}
+## Read the dataset
+pittsburgh <- fread("723773_Pittsburgh.csv", na.strings=c("NA","N/A","null",-9999))
+charlotte1 <- fread("723770_Charlotte1.csv", na.strings=c("NA","N/A","null",-9999))
+charlotte2 <- fread("723771_Charlotte2.csv", na.strings=c("NA","N/A","null",-9999))
+charlotte <- bind_rows(charlotte1, charlotte2)
+urbana_champaign <- fread("723775_Champaign.csv", na.strings=c("NA","N/A","null",-9999))
+las_vegas <- fread("722987_las vegas.csv", na.strings=c("NA","N/A","null",-9999))
+madison <- fread("722991_madison.csv", na.strings=c("NA","N/A","null",-9999))
+phoenix1 <- fread("723777_Phoenix1.csv", na.strings=c("NA","N/A","null",-9999))
+phoenix2 <- fread("723779_Phoenix2.csv", na.strings=c("NA","N/A","null",-9999))
+phoenix <- bind_rows(phoenix1, phoenix2)
+
+## Checked how many daily records each station of each state has and picked stations with complete data
+num_rec_per_station_pitt <- pittsburgh %>% 
+  group_by(STATION) %>%
+  summarize(count = n()) 
+num_rec_per_station_char <- charlotte %>% 
+  group_by(STATION) %>%
+  summarize(count = n()) 
+num_rec_per_station_urcham <- urbana_champaign %>% 
+  group_by(STATION) %>%
+  summarize(count = n()) 
+num_rec_per_station_lasvegas <- las_vegas %>% 
+  group_by(STATION) %>%
+  summarize(count = n())
+num_rec_per_station_madison <- madison %>% 
+  group_by(STATION) %>%
+  summarize(count = n()) 
+num_rec_per_station_phoenix <- phoenix %>% 
+  group_by(STATION) %>%
+  summarize(count = n()) 
+
+## Filtered stations with complete data
+pittsburgh <- pittsburgh %>% 
+  filter(STATION == "GHCND:USW00094823") %>% select(STATION:SNOW,TMAX:WT19)
+charlotte <- charlotte %>% 
+  filter(STATION == "GHCND:USW00013881") %>% select(STATION:SNOW,TMAX:WT19)
+urbana_champaign <- urbana_champaign %>% 
+  filter(STATION == "GHCND:USC00118740") %>% select(STATION:SNOW,TMAX:WT10)
+las_vegas <- las_vegas %>% 
+  filter(STATION == "GHCND:USW00023169") %>% select(STATION:SNOW,TMAX:WV03)
+madison <- madison %>% 
+  filter(STATION == "GHCND:USW00014837") %>% select(STATION:SNOW,TMAX:WT19)
+az <- phoenix %>% filter(STATION == "GHCND:USW00023183") %>% select(STATION:SNOW,TMAX:WT03)
+
+## Combined weather datasets
+weather <- pittsburgh %>% union(madison) %>% union(charlotte) %>% mutate(WV03 = NA)
+weather$WV03 <- as.integer(weather$WV03) 
+                                                                         
+las_vegas <- las_vegas %>% mutate(WT22 = NA, WT17 = NA, WT19 = NA, WT21 = NA, WT15 = NA)
+las_vegas$WT22 <- as.integer(las_vegas$WT22) 
+las_vegas$WT17 <- as.integer(las_vegas$WT17) 
+las_vegas$WT19 <- as.integer(las_vegas$WT19) 
+las_vegas$WT21 <- as.integer(las_vegas$WT21) 
+las_vegas$WT15 <- as.integer(las_vegas$WT15)
+
+weather <- weather %>% union(las_vegas)
+
+az <- az %>% mutate(WT09 = NA, WT22 = NA, WT17 = NA, WT19 = NA, WV03 = NA, WT15 = NA) 
+az$WT09 <- as.integer(az$WT09) 
+az$WT22 <- as.integer(az$WT22) 
+az$WT17 <- as.integer(az$WT17) 
+az$WT19 <- as.integer(az$WT19) 
+az$WV03 <- as.integer(az$WV03) 
+az$WT15 <- as.integer(az$WT15)
+
+weather <- weather %>% union(az) %>% mutate(WT10 = NA)
+weather$WT10 <- as.integer(weather$WT10)
+
+urbana_champaign <- urbana_champaign %>% mutate(WT18 = NA, WT16 = NA, WT22 = NA, WT17 = NA, WT07 = NA, WT14 = NA, WT19 = NA, WT13 = NA, WT21 = NA, WV03 = NA, WT15 = NA) 
+urbana_champaign$WT18 <- as.integer(urbana_champaign$WT18) 
+urbana_champaign$WT16 <- as.integer(urbana_champaign$WT16)
+urbana_champaign$WT22 <- as.integer(urbana_champaign$WT22)
+urbana_champaign$WT17 <- as.integer(urbana_champaign$WT17)
+urbana_champaign$WT07 <- as.integer(urbana_champaign$WT07)
+urbana_champaign$WT14 <- as.integer(urbana_champaign$WT14)
+urbana_champaign$WT19 <- as.integer(urbana_champaign$WT19)
+urbana_champaign$WT13 <- as.integer(urbana_champaign$WT13)
+urbana_champaign$WT21 <- as.integer(urbana_champaign$WT21)
+urbana_champaign$WV03 <- as.integer(urbana_champaign$WV03)
+urbana_champaign$WT15 <- as.integer(urbana_champaign$WT15)
+
+weather <- weather %>% union(urbana_champaign)
+
+## Further steps to change date format
+splitted <- t(sapply(weather$DATE, function(x) substring(x, first=c(1,5,7), last=c(4,6,8))))
+weather <- cbind(weather, splitted) %>% select(STATION:DATE,V1:V3,PRCP:WT10)
+library(plyr)
+weather <- rename(weather, c("V1"="yyyy", "V2"="mm", "V3" = "dd"))
+detach(package:plyr) # Detached plyr package due to possible conflict with dplyr package.
+
+library(lubridate)
+weather_original <- weather %>% unite(DATE_NEW, yyyy, mm, dd) %>% 
+        mutate(DATE_NEW = ymd(DATE_NEW)) %>%
+        select(STATION:STATION_NAME,DATE_NEW:WT10)
+weather_original <- data.frame(weather_original)
+weather_original[c("WT09","WT14","WT07","WT01","WT15","WT17","WT06","WT21","WT05","WT02","WT11","WT22","WT04","WT13","WT16","WT08","WT18","WT03","WT19","WV03","WT10")][is.na(weather_original[c("WT09","WT14","WT07","WT01","WT15","WT17","WT06","WT21","WT05","WT02","WT11","WT22","WT04","WT13","WT16","WT08","WT18","WT03","WT19","WV03","WT10")])] <- 0
+detach(package:lubridate)
+names(weather_original)[names(weather_original)=="DATE_NEW"] <- "DATE"
+
+## Filtered date from 2005-02-01 to 2015-12-24 
+weather <- weather_original %>% filter(DATE>="2005-02-01" & DATE<="2015-12-24") %>% arrange(DATE)
+```
+
+
+### Combine separate datasets
+
+We combined separate datasets and created user level dataset (including restaurants, their attributes and demographics of locations, users, their reviews, daily weather).
+
+#### Combine business dataset with demographic dataset
+
+```{r, eval = FALSE}
+business_review$zip <- as.factor(as.character(business_review$zip ))
+landsqmi$zip <- as.factor(as.character(landsqmi$zip ))
+combine<-left_join(business_review,population_zipdata,by="zip")
+combine<-left_join(combine,income_zipdata,by="zip")
+combine<-left_join(combine,education_zipdata,by="zip")
+combine<-left_join(combine,age_zipdata,by="zip")
+combine<-left_join(combine,race_zipdata,by="zip")
+combine<-left_join(combine,landsqmi,by="zip")
+combine[, 32:40]<- sapply(combine[, 32:40], as.numeric)
+combine<-combine%>%
+  mutate(popdensity_zip=population_zip/LANDSQMI)%>%
+  mutate(education_zip=bachelor/population_zip)%>%
+  mutate(white=white/population_zip,
+         Black.or.African.American=`Black or African American`/population_zip,
+         American.Indian.and.Alaska.Native=`American Indian and Alaska Native`/population_zip,
+         Asian=Asian/population_zip,
+         other=other/population_zip)
+combine<-combine%>%filter(!is.na(population_zip)&!is.na(income_zip)&!is.na(education_zip)&!is.na(age_zip))%>%select(-bachelor)
+data.frame(n.na=sapply(combine, function(x)sum(is.na(x)))) 
+```
+
+#### Combine business & demographic dataset with weather dataset
+
+```{r, eval = FALSE}
+## Add station names to join
+combine_weather<-combine%>%
+  mutate(STATION = ifelse(city%in%c("Urbana","Champaign"),"GHCND:USC00118740 ",
+                   ifelse(city%in%c("Phoenix","Scottsdale","Tempe","Mesa","Chandler","Gilbert","Glendale"), "GHCND:USW00023183",
+                   ifelse(city%in%c("Las Vegas","Henderson"),"GHCND:USW00023169",
+                   ifelse(city%in%c("Pittsburgh"),"GHCND:USW00094823",
+                   ifelse(city%in%c("Madison"),"GHCND:USW00014837","GHCND:USW00013881"))))))
+
+weather<-weather%>%select(-STATION_NAME)
+colnames(weather)[2]<-"date"
+combine_weather$date<-as.Date(combine_weather$date)
+combine_weather<-left_join(combine_weather,weather,by=c("STATION","date"))%>%filter(!is.na(PRCP))
+```
+
+
+### More wrangling
+
+#### Creating categorical variables
+
+```{r, eval = FALSE}
+user_whole<-combine_weather%>%
+   mutate(popdensity_cate=
+            ifelse (popdensity_zip<2000,0,
+                    ifelse(popdensity_zip>=2000 & popdensity_zip<4000,1,
+                           ifelse(popdensity_zip>=4000 & popdensity_zip<6000,2,3))))%>%
+   mutate(income_cate=
+            ifelse (income_zip<20000,0,
+                    ifelse(income_zip>=20000 & income_zip<30000,1,
+                           ifelse(income_zip>=30000 & income_zip<40000,2,3))))%>%
+   mutate(education_cate=
+            ifelse (education_zip<0.1,0,
+                    ifelse(education_zip>=0.1 & education_zip<0.2,1,2)))%>%
+   mutate(age_cate=
+            ifelse (age_zip<30,0,
+                    ifelse(age_zip>=30 & age_zip<40,1,
+                           ifelse(age_zip>=40 & age_zip<50,2,3))))%>%
+   mutate(white=white*100,
+          Black.or.African.American=Black.or.African.American*100,
+          American.Indian.and.Alaska.Native=American.Indian.and.Alaska.Native*100,
+          Asian=100*Asian,
+          other=100*other)
+
+combinewithoutuser <- user_whole[!duplicated(user_whole$business_id), ] %>%
+  select(1:27,32:34,42,40,41,35:39,73:76)
+```
+
+#### Creating a new variable, "positivity_net"
+
+We extracted all positive and negative words from review text of all users in our dataset using tidytext package and sentiments dictionary. 
+
+##### Positivity variable for each business
+
+```{r, evel = FALSE}
+library(tidytext)
+
+user_whole_sen <- user_whole %>% select(1:27,32:34,42,40,41,73:76,35:39,28:31,46:72)
+user_whole_sen[c("WT09","WT14","WT07","WT01","WT15","WT17","WT06","WT21","WT05","WT02","WT11","WT22","WT04","WT13","WT16","WT08","WT18","WT03","WT19","WV03","WT10")][is.na(user_whole_sen[c("WT09","WT14","WT07","WT01","WT15","WT17","WT06","WT21","WT05","WT02","WT11","WT22","WT04","WT13","WT16","WT08","WT18","WT03","WT19","WV03","WT10")])] <- 0
+
+bing <- sentiments %>%
+    filter(lexicon == "bing") %>%
+    select(word, sentiment)
+
+words <- user_whole_sen %>%
+  select(business_id, user_id, date, text) %>%
+  unnest_tokens(word, text) %>%
+  filter(!word %in% stop_words$word)
+
+x <- words %>% count(word, sort = TRUE)
+x <- x %>% filter(n>1)
+
+words <- words %>% 
+  inner_join(x) %>% 
+  select(business_id, user_id, date, word) %>% 
+  inner_join(bing)
+
+words <- words %>% 
+  filter(sentiment == "positive" | sentiment == "negative") %>%
+  mutate(positivity = ifelse(sentiment == "positive", 1, ifelse(sentiment == "negative", 0, NA)))
+
+words <- words %>%
+  group_by(business_id, user_id, date) %>%
+  mutate(num_words = n())
+  
+words <- words %>% 
+  group_by(business_id, user_id, date) %>% 
+  mutate(sum = sum(positivity),
+         positivity_net = sum*100/num_words) %>%
+  select(1:3,9)
+
+words <- words %>% group_by(business_id, user_id, date) %>%
+  summarize(positivity_net2 = mean(positivity_net))
+names(words)[4]<-"positivity_net"
+
+words <- user_whole_sen %>% full_join(words) %>% select(WT09:WT10)
+words$WV03 <- as.numeric(words$WV03)
+words$WT10 <- as.numeric(words$WT10)
+wt <- rowSums(words)
+business_whole_pos <- user_whole_sen %>% cbind(wt) 
+business_whole_pos <- business_whole_pos %>% full_join(words) %>% mutate(tmax_cat = ifelse (TMAX < 90, 0, 1))
+business_whole_pos <- business_whole_pos[!duplicated(business_whole_pos$business_id), ]
+names(business_whole_pos)[39]<-"black"
+names(business_whole_pos)[40]<-"native_american"
+names(business_whole_pos)[41]<-"asian"
+
+write.csv(business_whole_pos, file="business_whole_pos.csv", row.names=FALSE)
+```
+
+##### Positivity variable for each review
+
+```{r, evel = FALSE}
+words2 <- user_whole_sen %>%
+  select(user_id, date, text) %>%
+  unnest_tokens(word, text) %>%
+  filter(!word %in% stop_words$word)
+
+x2 <- words2 %>% count(word, sort = TRUE)
+x2 <- x2 %>% filter(n>1)
+
+words2 <- words2 %>% 
+  inner_join(x2) %>% 
+  select(user_id, date, word) %>% 
+  inner_join(bing)
+
+words2 <- words2 %>% 
+  filter(sentiment == "positive" | sentiment == "negative") %>%
+  mutate(positivity = ifelse(sentiment == "positive", 1, ifelse(sentiment == "negative", 0, NA)))
+
+words2 <- words2 %>%
+  group_by(user_id, date) %>%
+  mutate(num_words = n())
+  
+words2 <- words2 %>% 
+  group_by(user_id, date) %>% 
+  mutate(sum = sum(positivity),
+         positivity_net = sum*100/num_words) %>%
+  select(1:2,8)
+
+words2 <- words2 %>% group_by(user_id, date) %>%
+  summarize(positivity_net2 = mean(positivity_net))
+names(words2)[3]<-"positivity_net"
+
+words2 <- user_whole_sen %>% full_join(words2) %>% select(WT09:WT10)
+words2$WV03 <- as.numeric(words2$WV03)
+words2$WT10 <- as.numeric(words2$WT10)
+wt <- rowSums(words2)
+user_whole_pos <- user_whole_sen %>% cbind(wt) 
+user_whole_pos <- user_whole_pos %>% full_join(words2) %>% mutate(tmax_cat = ifelse (TMAX < 90, 0, 1))
+names(business_whole_pos)[37]<-"black"
+names(business_whole_pos)[38]<-"native_american"
+names(business_whole_pos)[39]<-"asian"
+
+write.csv(user_whole_pos, file="user_whole_pos.csv", row.names=FALSE)
+```
