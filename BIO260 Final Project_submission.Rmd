@@ -1,0 +1,1038 @@
+---
+title: "Prediction of restaurant ratings with Yelp dataset"
+author: "HoJin Shin, Qianyu Yuan, Yi Wang"
+date: "04 May 2016"
+output: html_document
+---
+
+All original data and cleaned data can be accessed in:  https://drive.google.com/folderview?id=0B6Q4ObScQe3Wbm91d091amhSQ3c&usp=sharing
+
+In order save time for Kniting HTML, we save results of several time-consuming process in the RDA file which also can be accessed in above linkage.
+
+# INTRODUCTION
+
+
+## Motivation
+
+Yelp, a multinational corporation, publishes crowd-sourced online reviews and ratings about local businesses since its foundation in 2004. By the end of 2015, Yelp had more than 95 million reviews and a monthly average of 86 million unique visitors who visited Yelp via their mobile device [1-3]. As its proven track record indicates, Yelp is used by a great number of people as a reference to choose local businesses to go. 
+
+Yelp uses 5-star rating, 1 - 5 stars, system for a local business, based on the mean of all star ratings given to the business. In a Yelp search, a star rating is most likely to influence on users' choice of local businesses to go as an economic research has shown that an extra half-star rating causes restaurants to sell out 19 percentage points (49%) more frequently [4]. However, people may be misled by the star rating since it may not only be influenced by quality of product or service, but also by other factors such as, but not limited to, price and atmosphere. Therefore, some users who priortize the quality of product or service compare to price might be disappointed if they find those local businesses' high star ratings were due to high quality with high price. In addition, researches show that weather affects mood, memory and cognitive performance of people [5,6], and users' demographic characteristics of a region are also related to the extent to which people's engagement in diverse types of online activities [7,8]. Since these exogenous factors that are not part of businesses features are also likely to affect users' ratings, we aim to investigate whether the ratings of businesses, especially restaurants, can be predicted not only based on characteristics of restaurants, but also those exogenous factors by using Yelp dataset.
+
+[1] http://www.yelp.com/about 
+[2] http://www.yelp.com/factsheet 
+[3] http://expandedramblings.com/index.php/yelp-statistics/ 
+[4] M. Anderson and J. Magruder. “Learning from the Crowd: Regression Discontinuity Estimates of the Effects of an Online Review Database.” The Economic Journal. 2011. 
+[5] M. A. Persinger. The weather matrix and human behavior. Praeger New York, 1980 
+[6] D. Watson. Mood and temperament. Guilford Press, 2000 
+[7] E. Hargittai. Digital Natives? Variation in Internet Skills and Uses among Members of the Net Generation. Sociological Inquiry, 80(1):92–113, 2010. 
+[8] E. Hargittai and Y.-l. P. Hsieh. Predictors and consequences of differentiated practices on social network sites. Information, Communication & Society, 13(4):515–536, 2010. 
+[9] https://www.yelp.com/dataset_challenge 
+
+
+## Objectives
+
+Through this project, we sought to answer whether the current ratings and reviews in Yelp are influenced by geographic and demographic characteristics of regions, as well as by the features of restaurants (e.g. price, service etc.). 
+
+### Questions we try to answer:
+
++ How are ratings influenced by features of restaurants and demographic characterics?
++ What features of restaurants are most significantly associated with ratings of restaurants?  
++ How can we predict the resturant ratings or individual ratings based on restaurants features and demohraphic characteristics?
++ How can we use ratings of restaurants and individual users to make recommendations for a specific user?
+
+
+## Approaches  
+
+### Visualization
+To explor characteristics of datasets in our anlaysis, we used:
+
++ Visualization (ggplot/histgram/boxplot) for summarizing data and identifying potential tends;     
++ Smoothing (loess) to create an approximating function that attempts to capture important patterns in the data. 
+
+### Statistical methods
+To predict ratings in restaurant and user datasets, we applied:
+
++ Linear regression / Lasso / Classification and Regression Trees (CART) / Random Forest / Support Vector Machine (SVM) to model resturant ratings. 
++ Logistic regression / Lasso / Classification and Regression Trees (CART) / Random Forest to model individual ratings.
+
+To make a recommendation for a specific user, we applied:  
+
++ Regularization, matrix decomposition and PCA to predict user-restaurant specific recommendations. 
+
+
+# DATA
+
+## Collecting
+
+The Yelp dataset we used is available on the Yelp Dataset Challenge homepage, [Yelp](https://www.yelp.com/dataset_challenge), which includes 2.2M reviews, 591K tips by 552K users for 77K businesses and 566K business attributes (e.g., hours, parking availability, ambience) from 4 countries. We limited our dataset to restaurant businesses and reviews from 13 cities of 6 states in the USA, Pennsylvania (Pittsburgh), North Carolina (Charlotte), Illinois(Urbana_Champaign), Arizona (Phoenix, Scottsdale, Tempe, Mesa, Chandler, Gilbert, Glendale), Nevada (Las Vegas, Henderson) and Wisconsin (Madison), which includes 10,617 restaurant records and 989,141 reviews. We obatained three separate files, businesses, users and reviews, in json format. We imported these json files into R using [Please fill this] for our analysis.
+
+Demographic characteristics of areas where restaurants of our analysis locate were obtained from [American FactFinder](http://factfinder.census.gov/faces/nav/jsf/pages/index.xhtml). This datasets include zip code level population, education, income, age and race information from 2009 to 2014.
+
+Daily summaries of weather dataset for six states from 01 Feb 2005 to 24 Dec 2015, dates of the first review and the last review in our dataset, respectively, were obtained from [NOAA (National Centers For Environmental Information)](https://www.ncdc.noaa.gov/cdo-web/). The daily weather datasets include following variables, weather station, date, PRCP (Precipitation), SNWD (Snowfall), SNOW (Snow depth), TMAX (Maximum temperature), TMIN (Minimum temperature), AWND (Average daily wind speed) and WT (Weather Types).
+
+
+## Data cleaning and wrangling
+
+Due to large file size and long processing time, we linked the data cleaning and wrangling steps
+[here](https://github.com/QianyuYuan/BIO260-Project/blob/master/BIO260%20Final%20Project_submission_Cleaning.Rmd).
+
+
+### Rationale for using sentimental positivity of review text
+
+Although the most influencial factor of restaurant ratings are likely to be the quality of food and service, it is hard to measure since it is subjective. In addition, Yelp dataset did not have any direct measure for them. Therefore, we used review sentiment as a proxy for the quality of food and service. If a user uses more positive words than negative words, it is likely to be he/she is satisfied with the quality of food or service of a restaurant.
+
+
+# EXPLORATORY ANALYSIS
+
+To begin with, following are non-binary categorical variables in our anlaysis. 
+
++ Type (Types of food): African, American, Asian, Bars, Cafe, European, Fastfood, Latin, Middle_Eastern, Pizza, Special (Kosher and Halal), Vegetarian
++ Noise: 0 = Average / 1 = Quiet / 2 = Loud / 3 = Very_loud 
++ Price: 1 / 2 / 3 / 4
++ Wi-fi: 0 = No / 1 = free / 2 = paid
++ Parking: 0 = No parking / 1 = parking(garage, validated, lot, valet) / 2 = parking(only street)
+
+```{r, warning = FALSE, include = FALSE}
+library(dplyr)
+library(readr)
+library(data.table)
+library(tidyr)
+library(knitr)
+library(ggplot2)
+library(ggrepel)
+library(broom)
+library(reshape2)
+library(caret)
+library(car)
+library(tidytext)
+library(gridExtra)
+library(RgoogleMaps)
+library(glmnet)
+library(rpart)
+library(randomForest)
+library(e1071)
+library(nnet)
+library(stringr)
+```
+
+Loading datasets
+```{r}
+restaurant<-read_csv("business_whole_pos.csv")
+user<-read_csv("user_whole_pos.csv")
+restaurant <- restaurant %>% filter(!is.na(type) & !is.na(positivity_net))
+```
+
+## Visualization of restaurant ratings
+
+### Maping the location of restaurants
+```{r}
+PlotOnStaticMap(lat = restaurant$latitude, lon = restaurant$longitude,  zoom =5, size = c(640,640), TrueProj=TRUE, cex=1.4, pch=19, col="red3", FUN = points, add = F)
+
+```
+
+### Distribution of number of restaurants
+
+```{r,warning = FALSE}
+## By city
+restaurant%>%group_by(city)%>%ggplot( aes(city) ) + geom_bar( stat="count", width = 0.8, fill="lightskyblue")+xlab("State")+ylab("Restuaurant number")+ggtitle("Restaurant number in 13 cities")+theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+Some big cities such as Las Vegas, Charlotte and Phoenix have larger number of restaurants than other smaller cities. Especially, Las Vegas has the highest number of restaurants.
+
+```{r}
+## By state
+restaurant%>%group_by(state)%>%ggplot( aes(state) ) + geom_bar( stat="count", width = 0.8, fill="lightskyblue")+xlab("City")+ylab("Restuaurant number")+ggtitle("Restaurant number in 6 states")
+
+```
+
+Since 6 cities in our dataset is in Arizona, counting the number of restaurants by state shows that Arizona has the highest number of restaurants. Nevada which includes Las Vegas still has large number of restaurants.
+
+```{r}
+## By types of food
+restaurant %>% ggplot(aes(type)) + geom_bar( stat="count", width = 0.8, fill="lightskyblue")+ylab("restaurant numbers")+ggtitle("Restaurant number of different food type")
+
+```
+
+Types of food in our dataset are most likely to be American, Asian, bars, Fastfood, Latin and Pizza, while there are few African, Middle_Eastern, special(Kosher and Halal) and vegetarian.
+
+### Distribution of restaurant ratings
+```{r}
+restaurant %>% ggplot(aes(x = stars)) + geom_bar(fill="lightskyblue")
+```
+
+Restaurant ratings are approximately normal distributed and slightly skewed to the left.
+
+### Restaurant: Ratings versus Features
+In order to visualize the relationship between restaurant features and restaurant ratings, we caluated the difference between feature specific average ratings and the average rating of all the resturants in our dataset: 
+$$
+Average ratings (feature specific) - Average rating (allrestaurants) 
+$$
+
+#### Differences by type of food
+```{r,warning = FALSE}
+mean_overall <- mean(restaurant$stars)
+restaurant %>% group_by(type) %>%
+  summarize(mean = mean(stars), diff = mean - mean_overall) %>% ggplot( aes(type, diff, label = type) )+ 
+  geom_bar( stat="identity", position="identity", aes(fill = type)) +
+  theme(axis.text.x = element_text(angle = 40, size = 10, hjust = 0.9, vjust = 0.9),legend.position="none") +
+  ggtitle("Differences of average stars by types of food") + ylab("Difference(stars - avg.stars)")
+
+```
+
+Ratings of most types of food are above the average, while ratings of fast food is distinctly below the average.
+
+#### Differences by price
+```{r,warning = FALSE}
+restaurant %>% group_by(price) %>%
+  summarize(mean = mean(stars), diff = mean - mean_overall) %>% 
+  ggplot(aes(price, diff, label = price,width=0.8 )) +
+  geom_bar( stat="identity", position="identity", aes(fill = price)) +
+  ggtitle("Differences of average stars by price") + ylab("Difference(stars - avg.stars)")+theme(legend.position="none")
+
+```
+
+Restaurants with higher price have higher average ratings.
+
+#### Differences by the level of noise
+```{r,warning = FALSE}
+restaurant %>% group_by(noise) %>% 
+  summarize(mean = mean(stars), diff = mean - mean_overall) %>%
+  ggplot( aes(as.factor(noise), diff, label = noise,width=0.7) ) +
+  geom_bar( stat="identity", position="identity", aes(fill = noise)) +
+  ggtitle("Differences of average stars by the level of noise") + ylab("Difference(stars - avg.stars)")+xlab("Noise")+theme(legend.position="none")+
+  scale_x_discrete(labels=c( "Average","Quite", "Loud","Very loud"))
+
+```  
+
+Restaurants with loud noise tend to have lower ratings.
+
+#### Differences by the availability of parking
+```{r,warning = FALSE}
+restaurant %>% group_by(parking) %>% 
+  summarize(mean = mean(stars), diff = mean - mean_overall) %>% 
+  ggplot( aes(as.factor(parking), diff, label = as.factor(parking),width=0.7) ) +
+  geom_bar( stat="identity", position="identity", aes(fill = parking)) +
+  ggtitle("Differences of average stars by parking") + ylab("Difference(stars - avg.stars)")+xlab("Parking")+theme(legend.position="none")+
+  scale_x_discrete(labels=c("0" = "No parking", "1" = "garage/validated/lot/valet parking","2" = "street parking"))
+
+```
+
+Restaurants with no parking have lower average ratings.
+
+```{r}
+restaurant%>%ggplot(aes(parking))+geom_bar(fill="lightskyblue",width=0.7)+
+  ggtitle("Distribution of the availability of parking")
+
+```
+
+Most restaurants provide garage/validated/lot/valet parking.
+
+#### Differences by the availability of Wi-Fi
+```{r,warning = FALSE}
+restaurant %>% group_by(wifi) %>% summarize(mean = mean(stars), diff = mean - mean_overall) %>% ggplot( aes(as.factor(wifi), diff, label = wifi,width=0.8) ) +
+  geom_bar( stat="identity", position="identity", aes(fill = wifi)) +
+  ggtitle("Differences of average stars by Wi-Fi") + ylab("Difference(stars - avg.stars)")+xlab("Wi-Fi")+theme(legend.position="none")+
+  scale_x_discrete(labels=c( "No","Free","Paid"))
+
+restaurant%>%ggplot(aes(wifi))+geom_bar(fill="lightskyblue",width=0.7)+
+  ggtitle("Distribution of the availability of Wi-Fi")+
+  xlab("Wi-Fi")+
+  scale_x_discrete(labels=c( "No","Free","Paid"))
+
+```
+
+Resturants with Paid Wi-Fi tend to be rated lower, while average ratings for restaurants with or without free Wi-fi are similar. However, the results are likely to be baised becuase there are few restaurants which provide paid Wi-fi.
+
+### Restaurant: Review_counts versus Ratings
+
+```{r,warning = FALSE}
+restaurant %>% group_by(stars) %>% 
+  ggplot(aes(stars, review_count, col=stars, group=stars)) + geom_boxplot() +
+  scale_y_log10() +
+  ggtitle("Review_count, stratified by stars") + ylab("Review_count (log10 scale)")+theme(legend.position="none")
+
+```
+
+Ratings of restaurants seem to be related to the number of reviews as shown in this plot where the number of reviews keep increasing from 1 star to 4 stars and decreasing afterward.
+
+
+### Restaurant: Positive sentiment of review text versus Ratings
+
+```{r,warning = FALSE}
+restaurant%>%group_by(stars)%>%
+  ggplot(aes(x=as.factor(stars), y=positivity_net,col=stars))+
+  geom_boxplot()+xlab("Stars")+ylab("Proportion of positive words of review text")+
+  ggtitle("Reviews Positivity, stratified by stars")+
+  theme(legend.position="none")
+
+```
+
+The results seem to be consistent with the common sense that ratings might be subjective, and thus, users' emotion might be reflected in their reviews. Therefore, this makes sense that higher positivity of reviews are related to higer ratings.
+
+
+### Restaurant: Demographic characteristics versus Ratings  
+In order to visualize the relationship between demograhpic characteristics of restaurants and their ratings, we are assuming that the shape of relationship is _smooth_ and using local weighted regression (loess) smoothing to plot the relationship.
+
+Here we are using average ratings of restaurants in the same zip code area as an outcome since demographic characteristics in our dataset are clustered by zip code.
+
+#### Population density versus Average ratings by zip code 
+```{r,warning = FALSE}
+library(broom)
+span <- 0.2
+pop1<-restaurant%>%group_by(popdensity_zip)%>%
+  filter(popdensity_zip<10000)%>%
+  summarize(mean=mean(stars))
+pop2 <- pop1 %>%
+  inflate(center = unique(pop1$popdensity_zip)) %>%
+  mutate(dist = abs(popdensity_zip - center)) %>%
+  filter(rank(dist) / n() <= span) %>%
+  mutate(weight = (1 - (dist / max(dist)) ^ 3) ^ 3)
+loess_fit1 <- augment(loess(mean~popdensity_zip, degree=1, span = span, data=pop1))
+ggplot(pop2, aes(popdensity_zip, mean)) +
+  geom_point(aes(alpha = weight, frame = center),cex=1) +
+  geom_line(aes(x=popdensity_zip, y = .fitted, frame = popdensity_zip, cumulative = TRUE), data = loess_fit1, color = "red",lwd=1) + ylim(3,4)+xlab("Population Density")+ylab("Average Stars")
+
+```
+
+There seems to be no increasing or decreasing trend. This makes sense because population density is not likely to be associated with how spacious a restaurant is.
+
+#### Income versus Average ratings by zip code
+```{r,warning = FALSE}
+income1<-restaurant%>%group_by(income_zip)%>%
+  filter(income_zip>10000 & income_zip<50000)%>%
+  summarize(mean=mean(stars))
+income2 <- income1 %>%
+  inflate(center = unique(income1$income_zip)) %>%
+  mutate(dist = abs(income_zip - center)) %>%
+  filter(rank(dist) / n() <= span) %>%
+  mutate(weight = (1 - (dist / max(dist)) ^ 3) ^ 3)
+loess_fit2 <- augment(loess(mean~income_zip, degree=1, span = span, data=income1))
+ggplot(income2, aes(income_zip, mean)) +
+  geom_point(aes(alpha = weight, frame = center),cex=1) +
+  geom_line(aes(x=income_zip, y = .fitted, frame = income_zip, cumulative = TRUE), data = loess_fit2, color = "red",lwd=1) + ylim(3.2,3.9)+xlab("Annual Income ($)")+ylab("Average Stars")
+
+```
+
+Although average ratings tend to decrease slighlty as annual income increases, the association is not clear. Therefore, we restriced the dataset to restaurants with higer price to see if people with higer annual income would rate restaurants with higher price harsher than people with lower annual income. 
+
+```{r}
+## Restaurants with price 3 & 4
+span2=0.3
+income3<-restaurant%>%filter(price==3 | price==4)%>%
+  group_by(income_zip)%>%
+  filter(income_zip>10000 & income_zip<50000)%>%
+  summarize(mean=mean(stars))
+income4 <- income3 %>%
+  inflate(center = unique(income3$income_zip)) %>%
+  mutate(dist = abs(income_zip - center)) %>%
+  filter(rank(dist) / n() <= span2) %>%
+  mutate(weight = (1 - (dist / max(dist)) ^ 3) ^ 3)
+loess_fit_2 <- augment(loess(mean~income_zip, degree=1, span = span2, data=income3))
+ggplot(income4, aes(income_zip, mean)) +
+  geom_point(aes(alpha = weight, frame = center),cex=1) +
+  geom_line(aes(x=income_zip, y = .fitted, frame = income_zip, cumulative = TRUE), data = loess_fit_2, color = "red",lwd=1) + ylim(3.2,4)+xlab("Annual Income ($)")+ylab("Average Stars")
+
+```
+
+Althogh the slope does not seem to be changed much, people with higher annual income seem to rate harsher than others.
+
+#### Restaurant: Level of education versus Average ratings by zip code
+```{r,warning = FALSE}
+edu1<-restaurant%>%group_by(education_zip)%>%
+  filter(education_zip>0.05 & education_zip<0.3)%>%
+  summarize(mean=mean(stars))
+edu2 <- edu1 %>%
+  inflate(center = unique(edu1$education_zip)) %>%
+  mutate(dist = abs(education_zip - center)) %>%
+  filter(rank(dist) / n() <= span) %>%
+  mutate(weight = (1 - (dist / max(dist)) ^ 3) ^ 3)
+loess_fit3 <- augment(loess(mean~education_zip, degree=1, span = span, data=edu1))
+ggplot(edu2, aes(education_zip, mean)) +
+  geom_point(aes(alpha = weight, frame = center),cex=1) +
+  geom_line(aes(x=education_zip, y = .fitted, frame = education_zip, cumulative = TRUE), data = loess_fit3, color = "red",lwd=1) + ylim(3,4)+xlab("Education (% of people with Bachelor's degree)")+ylab("Average Stars")
+```
+
+There seems to be no trend. Considering the fact that about 60% of Yelp users are college educated, Yelp users might be different from people live around a restaurant, and thus, no-association may be possible.
+
+#### Restaurant: Age versus Average ratings by zip code
+```{r,warning = FALSE}
+age1<-restaurant%>%group_by(age_zip)%>%
+  filter(age_zip>25 & age_zip<50)%>%
+  summarize(mean=mean(stars))
+age2 <- age1 %>%
+  inflate(center = unique(age1$age_zip)) %>%
+  mutate(dist = abs(age_zip - center)) %>%
+  filter(rank(dist) / n() <= span) %>%
+  mutate(weight = (1 - (dist / max(dist)) ^ 3) ^ 3)
+loess_fit4 <- augment(loess(mean~age_zip, degree=1, span = span, data=age1))
+ggplot(age2, aes(age_zip, mean)) +
+  geom_point(aes(alpha = weight, frame = center),cex=1) +
+  geom_line(aes(x=age_zip, y = .fitted, frame = age_zip, cumulative = TRUE), data = loess_fit4, color = "red",lwd=1) + ylim(3.2,3.8)+ylab("Average Stars")
+
+```
+
+Although older people seem to be associated with higher ratings, considering that most of Yelp users might be relatively younger, we are not sure about this association.
+
+
+## Visualization of user ratings
+
+
+### Distribution of individual user ratings
+```{r,warning = FALSE}
+user %>% ggplot(aes(x = star_individual,width=0.8)) + geom_bar(fill="lightskyblue")+
+  ylab("Counts")+xlab("Individual Ratings")
+```
+
+Unlike the distribution of restaurant ratings, the distribution of individual user ratings is absolutely skewed to the left.
+
+
+### User: Postive sentiment of review contents versus Ratings
+```{r,warning = FALSE}
+user%>%group_by(star_individual)%>%ggplot(aes(x=as.factor(star_individual), y=positivity_user,col=star_individual))+
+  geom_boxplot()+xlab("Stars")+
+  ggtitle("Individual Reviews Positivity, stratified by stars")+
+  theme(legend.position="none")
+```
+
+Review texts with higher proportion of positive words seem to be associated with higher ratings.
+
+
+### User: Weather versus Individual Ratings
+
+#### Max/Min temperature versus Individual Ratings
+```{r,warning = FALSE}
+##Maximum temperature versus individual ratings
+tmax1<-user%>%group_by(TMAX)%>%
+  filter(TMAX>20)%>%
+  summarize(mean=mean(star_individual))
+tmax2 <- tmax1 %>%
+  inflate(center = unique(tmax1$TMAX)) %>%
+  mutate(dist = abs(TMAX - center)) %>%
+  filter(rank(dist) / n() <= span) %>%
+  mutate(weight = (1 - (dist / max(dist)) ^ 3) ^ 3)
+loess_fit5 <- augment(loess(mean~TMAX, degree=1, span = span, data=tmax1))
+ggplot(tmax2, aes(TMAX, mean)) +
+  geom_point(aes(alpha = weight, frame = center),cex=1) +
+  geom_line(aes(x=TMAX, y = .fitted, frame = TMAX, cumulative = TRUE), data = loess_fit5, color = "red",lwd=1) + ylim(3.6,3.9)+xlab("Maximum temperature (daily)")+ylab("Average ratings")
+
+##Minimum temperature versus individual ratings
+tmin1<-user%>%group_by(TMIN)%>%
+  filter(TMIN>0)%>%
+  summarize(mean=mean(star_individual))
+tmin2 <- tmin1 %>%
+  inflate(center = unique(tmin1$TMIN)) %>%
+  mutate(dist = abs(TMIN - center)) %>%
+  filter(rank(dist) / n() <= span) %>%
+  mutate(weight = (1 - (dist / max(dist)) ^ 3) ^ 3)
+loess_fit6 <- augment(loess(mean~TMIN, degree=1, span = span, data=tmin1))
+ggplot(tmin2, aes(TMIN, mean)) +
+  geom_point(aes(alpha = weight, frame = center),cex=1) +
+  geom_line(aes(x=TMIN, y = .fitted, frame = TMIN, cumulative = TRUE), data = loess_fit6, color = "red",lwd=1) + ylim(3.6,3.9)+xlab("Minimum temperature (daily)")+ylab("Average ratings")
+```
+
+Maximum and minimum daily temperature seem to be associated with average individual ratings.
+
+#### User: Differences of average stars by weather type
+```{r,warning = FALSE}
+average<-user%>%filter(WT01!=1 & WT02!=1 & WT03!=1 & WT04!=1 & WT05!=1 & WT06!=1 & WT07!=1 & WT08!=1 & WT09!=1 & WT13!=1 & WT14!=1 & WT16!=1 & WT18!=1)%>%
+  summarize(mean=mean(star_individual,na.rm=TRUE))
+average<-average$mean
+average=mean(user$star_individual)
+weather<-user%>%select(WT09:WT10,star_individual)%>%
+summarize(Fog=sum(WT01*star_individual)/sum(WT01)-average,
+          Heavyfog=sum(WT02*star_individual)/sum(WT02)-average,
+          Thunder=sum(WT03*star_individual)/sum(WT03)-average,
+          Icepellets=sum(WT04*star_individual)/sum(WT04)-average,
+          Hail=sum(WT05*star_individual)/sum(WT05)-average,
+          Glaze=sum(WT06*star_individual)/sum(WT06)-average,
+          Dust=sum(WT07*star_individual)/sum(WT07)-average,
+          Smoke=sum(WT08*star_individual)/sum(WT08)-average,
+          Blowing=sum(WT09*star_individual)/sum(WT09)-average,
+          Highwinds=sum(WT09*star_individual)/sum(WT09)-average,
+          Mist=sum(WT13*star_individual)/sum(WT13)-average,
+          Drizzle=sum(WT14*star_individual)/sum(WT14)-average,
+          Rain=sum(WT16*star_individual)/sum(WT16)-average,
+          Snow=sum(WT18*star_individual)/sum(WT18)-average)
+change<-as.matrix(weather)
+barplot(change,space = 0.5, axisnames = TRUE,cex.names = 0.7, las=2,xlab="weather type",col="lightskyblue",ylim=c(-0.06,0.04),border=NA)
+
+```
+
+Individual ratings in non-sunny days are generally lower than the average ratings in sunny days.
+
+
+# MODELING
+
+We separately performed analyses for restaurant and user datasets.
+
+
+## Restaurant level anlaysis
+
+To explore relationships between the outcome, restaurant ratings, and variables as well as among attributes, we fitted models. Since star rating of restaurants starts at 1.0 up to 5.0 by 0.5 scale and its distribution looked pretty normal from the bar plot, we treated it as a continuous variable. Our analyses include:
+
++ Exploring the statistically siginificant variables associated with the average ratings of restaurant using stepwise and Lasso variable selection methods.  
++ Using regression trees / random forest/ Support Vector Machine (SVM) for prediction of restaurant ratings
+
+
+### Partitioning the dataset
+
+To fit and evaluate models, we partitioned the dataset to training and testing. Also, non-binary categorical variables were changed to factor.
+
+```{r}
+restaurant <- restaurant %>% filter(!is.na(type) & !is.na(positivity_net))
+restaurant[, c(2:4,23:26,34:37)] <- lapply(restaurant[, c(2:4,23:26,34:37)], as.factor)
+
+inTrain <- createDataPartition(y=restaurant$stars, p=0.80, list=FALSE)
+training <- restaurant[inTrain,]
+testing  <- restaurant[-inTrain,]
+```
+
+_Note: In predicting steps of each modeling, there are warning messages, "contrasts dropped from factor C(type, base = 2)". This message seems to be created due to limited sample size of testing dataset._ 
+
+### Multivariable linear regression - stepwise
+
+```{r, results = 'hide'}
+## We fitted a stepwise linear regression model
+rest_linear_fit <- lm(stars ~ C(type, base=2) + review_count + takeout + reservation + outdoorseating + waiterservice + creditcards + goodforkids + goodforgroups + goodfordessert + goodforlatenight + goodforlunch + goodfordinner + goodforbrunch + goodforbreakfast + price + parking + noise + alcohol + white + black + native_american + asian + other + wifi + popdensity_zip + income_zip + education_zip + age_zip + positivity_net, data = training)
+
+## Choosing variables using stepwise
+rest_linear_fit_step <- step(rest_linear_fit)
+```
+
+```{r}
+summary(rest_linear_fit_step)
+```
+
+We found that stepwise exlcuded following variables, 'takeout', 'reservation', 'waiterservice', 'goodforkids', 'other' race, 'goodfordinner', 'alcohol', 'white', 'native_american' and 'education zip'.
+
+```{r}
+rest_linear_fit_step_coef <- tidy(rest_linear_fit_step, conf.int = TRUE)
+rest_linear_pred_step <- predict(rest_linear_fit_step, testing)
+rest_linear_rmse_step <- RMSE(testing$stars, rest_linear_pred_step)
+rest_linear_rmse_step
+par(mfrow=c(2,2));plot(rest_linear_fit_step)
+```
+
+From these plots, we found that the linear regression model performs well.  
+
+```{r}
+rmse_results <- data_frame(method = "Restaurant Stepwise Linear Regression", RMSE = rest_linear_rmse_step)
+```
+
+
+### Multivariable linear regression - Lasso
+
+```{r}
+xfactors <- model.matrix(stars ~ C(type, base=2) + takeout + reservation + outdoorseating + waiterservice + creditcards + goodforkids + goodforgroups + goodfordessert + goodforlatenight + goodforlunch + goodfordinner + goodforbrunch + goodforbreakfast + price + parking + noise + alcohol + wifi, training)[,-1]
+x <- as.matrix(data.frame(training$review_count, training$white, training$black, training$native_american, training$asian, training$other, training$popdensity_zip, training$income_zip, training$education_zip, training$age_zip, training$positivity_net, xfactors))
+
+glmmod<-glmnet(x,training$stars,alpha=.5,family='gaussian')
+cvfit <- glmnet::cv.glmnet(x, training$stars)
+rest_linear_fit1_lasso_coef <- coef(cvfit, s = "lambda.1se")
+print(rest_linear_fit1_lasso_coef)
+```
+
+We found that Lasso selection further excluded 'black', 'income zip' and 'age zip' besides the variables, 'takeout', 'reservation', 'waiterservice', 'goodforkids', 'other' race, 'goodfordinner', 'alcohol', 'white', 'native_american' and 'education zip'.
+
+```{r}
+#plot variable coefficients vs. shrinkage parameter lambda.
+plot(glmmod,xvar="lambda")
+
+# Predictions are made with the test set in order to evaluate the chosen model.
+xfactors_test <- model.matrix(stars ~ C(type, base=2) + takeout + reservation + outdoorseating + waiterservice + creditcards + goodforkids + goodforgroups + goodfordessert + goodforlatenight + goodforlunch + goodfordinner + goodforbrunch + goodforbreakfast + price + parking + noise + alcohol + wifi, testing)[,-1]
+x_test <- as.matrix(data.frame(testing$review_count, testing$white, testing$black, testing$native_american, testing$asian, testing$other, testing$popdensity_zip, testing$income_zip, testing$education_zip, testing$age_zip, testing$positivity_net, xfactors_test))
+
+rest_linear_lasso_pred <- predict(cvfit, x_test,s="lambda.1se")
+rest_linear_lasso_rmse <- RMSE(testing$stars, rest_linear_lasso_pred)
+rest_linear_lasso_rmse
+rmse_results <- bind_rows(rmse_results,
+                          data_frame(method="Restaurant Lasso Linear Regression",  
+                                     RMSE = rest_linear_lasso_rmse ))
+```
+
+
+### CART Modeling (Classification and Regreesion trees)
+
+```{r}
+rest_cart_fit <- rpart(stars ~ C(type, base=2) + review_count + takeout + reservation + outdoorseating + waiterservice + creditcards + goodforkids + goodforgroups + goodfordessert + goodforlatenight + goodforlunch + goodfordinner + goodforbrunch + goodforbreakfast + price + parking + noise + alcohol + white + black + native_american + asian + other + wifi + popdensity_zip + income_zip + education_zip + age_zip + positivity_net, data = training)
+
+printcp(rest_cart_fit)
+rest_cart_fit$cptable[which.min(rest_cart_fit$cptable[,"xerror"]),"CP"]
+pcart<- prune(rest_cart_fit, cp=0.01)
+rest_cart_pred <- predict(pcart, testing)
+rest_cart_rmse <- RMSE(testing$stars, rest_cart_pred)
+rmse_results <- bind_rows(rmse_results,
+                          data_frame(method="Restaurant CART Regression",  
+                                     RMSE = rest_cart_rmse ))
+rest_cart_rmse
+```
+
+
+### Random Forest
+
+```{r, eval = FALSE}
+rest_rf_fit <- randomForest(stars ~ type + review_count + takeout + reservation + outdoorseating + waiterservice + creditcards + goodforkids + goodforgroups + goodfordessert + goodforlatenight + goodforlunch + goodfordinner + goodforbrunch + goodforbreakfast + price + parking + noise + alcohol + white + black + native_american + asian + other + wifi + popdensity_zip + income_zip + education_zip + age_zip + positivity_net, data = training)
+```
+
+```{r}
+load(file = 'rest_rf_fit.rda')
+
+variable_importance <- importance(rest_rf_fit) 
+tmp <- data_frame(feature = rownames(variable_importance),
+                  Gini = variable_importance[,1]) %>%
+  arrange(desc(Gini))
+kable(tmp[1:15,])
+```
+
+We found that Variables used to be excluded in stepwise and Lasso were important in Random Forest, 'black', 'income zip', 'age zip', 'other' race, 'white', 'native_american' and 'education zip'.
+
+```{r}
+rest_rf_pred <- predict(rest_rf_fit, testing)
+rest_rf_rmse <- RMSE(testing$stars, rest_rf_pred)
+
+rmse_results <- bind_rows(rmse_results,
+                          data_frame(method="Restaurant Random Forest Regression",  
+                                     RMSE = rest_rf_rmse ))
+rest_rf_rmse
+```
+
+
+### Support Vector Machine (SVM)
+
+```{r, eval = FALSE}
+#The best SVM model is obtained by iteration through various costs.
+rest_svm_fit2 <-tune(svm, stars ~ type + review_count + takeout + reservation + outdoorseating + waiterservice + creditcards + goodforkids + goodforgroups + goodfordessert + goodforlatenight + goodforlunch + goodfordinner + goodforbrunch + goodforbreakfast + price + parking + noise + alcohol + white + black + native_american + asian + other + wifi + popdensity_zip + income_zip + education_zip + age_zip + positivity_net, data = training, kernel="linear", ranges=list(cost=c(0.001,0.01,0.1, 1,5)))
+
+summary(rest_svm_fit2) #The SVM tuning parameter findings
+bestmodel <-rest_svm_fit2$best.model #The best model
+```
+
+```{r}
+load(file = 'rest_svm_best.rda')
+summary(bestmodel) #The best model results
+
+#SVM Model Evaluation: Predictions are made with the test set in order to evaluate the chosen model.
+rest_svm_pred <- predict(bestmodel, testing)
+rest_svm_rmse <- RMSE(testing$stars, rest_svm_pred)
+rmse_results <- bind_rows(rmse_results,
+                          data_frame(method="Restaurant Support Vector Machine Regression",  
+                                     RMSE = rest_svm_rmse ))
+rest_svm_rmse
+```
+
+
+### Restricted dataset (without "Las Vegas")
+
+Las Vegas is likely to be different from other regions in terms of customer characteristics because most of customers are likely to be visitors. Therefore, we restricted the dataset to without Las Vegas.
+
+```{r}
+rest_no_lv <- restaurant %>% filter(!city== "Las Vegas")
+
+inTrain_no_lv <- createDataPartition(y=rest_no_lv$stars, p=0.80, list=FALSE)
+train_no_lv <- rest_no_lv[inTrain_no_lv,]
+test_no_lv  <- rest_no_lv[-inTrain_no_lv,]
+```
+
+#### Restricted dataset (without "Las Vegas") multivariable linear regression - stepwise
+
+```{r, results = 'hide'}
+rest_linear_fit2 <- lm(stars ~ C(type, base=2) + review_count + takeout + reservation + outdoorseating + waiterservice + creditcards + goodforkids + goodforgroups + goodfordessert + goodforlatenight + goodforlunch + goodfordinner + goodforbrunch + goodforbreakfast + price + parking + noise + alcohol + white + black + native_american + asian + other + wifi + popdensity_zip + income_zip + education_zip + age_zip + positivity_net, data = train_no_lv)
+
+## choosing variables using stepwise methods
+rest_linear_fit2_step <- step(rest_linear_fit2)
+```
+
+```{r}
+summary(rest_linear_fit2_step)
+
+rest_linear_fit2_step_coef <- tidy(rest_linear_fit2_step, conf.int = TRUE)
+rest_linear_pred2_step <- predict(rest_linear_fit2_step, test_no_lv)
+rest_linear_rmse2_step <- RMSE(test_no_lv$stars, rest_linear_pred2_step)
+rest_linear_rmse2_step
+
+rmse_results <- bind_rows(rmse_results,
+                          data_frame(method="Restaurant Stepwise Linear Regression (without Las Vegas)",  
+                                     RMSE = rest_linear_rmse2_step ))
+```
+
+#### Restricted dataset (without "Las Vegas") multivariable linear regression - Lasso
+
+```{r}
+xfactors <- model.matrix(stars ~ C(type, base=2) + takeout + reservation + outdoorseating + waiterservice + creditcards + goodforkids + goodforgroups + goodfordessert + goodforlatenight + goodforlunch + goodfordinner + goodforbrunch + goodforbreakfast + price + parking + noise + alcohol + wifi, train_no_lv)[,-1]
+x <- as.matrix(data.frame(train_no_lv$review_count, train_no_lv$white, train_no_lv$black, train_no_lv$native_american, train_no_lv$asian, train_no_lv$other, train_no_lv$popdensity_zip, train_no_lv$income_zip, train_no_lv$education_zip, train_no_lv$age_zip, train_no_lv$positivity_net, xfactors))
+
+glmmod2<-glmnet(x,train_no_lv$stars,alpha=.5,family='gaussian')
+cvfit2 <- glmnet::cv.glmnet(x, train_no_lv$stars)
+rest_linear_fit2_lasso_coef <- coef(cvfit2, s = "lambda.1se")
+print(rest_linear_fit2_lasso_coef)
+
+#plot variable coefficients vs. shrinkage parameter lambda.
+plot(glmmod2,xvar="lambda")
+
+xfactors_test <- model.matrix(stars ~ C(type, base=2) + takeout + reservation + outdoorseating + waiterservice + creditcards + goodforkids + goodforgroups + goodfordessert + goodforlatenight + goodforlunch + goodfordinner + goodforbrunch + goodforbreakfast + price + parking + noise + alcohol + wifi, test_no_lv)[,-1]
+x_test <- as.matrix(data.frame(test_no_lv$review_count, test_no_lv$white, test_no_lv$black, test_no_lv$native_american, test_no_lv$asian, test_no_lv$other, test_no_lv$popdensity_zip, test_no_lv$income_zip, test_no_lv$education_zip, test_no_lv$age_zip, test_no_lv$positivity_net, xfactors_test))
+
+rest_linear_lasso_pred2 <- predict(cvfit2, x_test,s="lambda.1se")
+rest_linear_lasso_rmse2 <- RMSE(test_no_lv$stars, rest_linear_lasso_pred2)
+rmse_results <- bind_rows(rmse_results,
+                          data_frame(method="Restaurant Lasso Linear Regression (without Las Vegas)",  
+                                     RMSE = rest_linear_lasso_rmse2 ))
+rmse_results %>% kable
+```
+
+
+## User level analysis
+
+To explore relationships between the outcome, individual ratings, and variables including weather data, we fitted models. Since star rating of individual users starts at 1.0 up to 5.0 by 1.0 scale, we treated it as categorical.
+
+Our analyses used Logistic regression / Multinomial Lasso / Classification Trees / k nearest nighborhood / Random Forest for prediction of individual ratings
+
+
+### Restricted and partitioned dataset
+
+Since the user dataset was too huge to fit a model and Las Vegas and its neighboring city, Henderson, are likely to be different from other cities, we excluded Nevada from this anlaysis. In addition, we further restricted the dataset to individuals with more than 50 reviews and restaurants with more than 100 reviews.
+
+```{r}
+user_select<-user%>%filter(state!="NV")%>%
+  select(business_id,user_id,date,star_individual,reviewcount_individual,stars,review_count,type,8:25,27:29,31:35,TMAX,TMIN,positivity_user,positivity_rest)
+user_select<-user_select%>%filter(!is.na(type) & !is.na(positivity_user) & !is.na(positivity_rest) )
+
+## filter individuals with more than 50 reviews in our dataset and restaurants with more than 100 reviews
+user_model<-user_select%>%
+  filter(review_count>100 & review_count<500 & reviewcount_individual>100)
+user_model$type <- factor(user_model$type)
+user_model$star_individual_cate <- factor(user_model$star_individual)
+
+## Split data into train set and test set
+set.seed(125)
+inTrain <- createDataPartition(y=user_model$star_individual, p=0.80, list=FALSE)
+train_set<- user_model[inTrain,]
+test_set<- user_model[-inTrain,]
+```
+
+
+### Logistic regression
+
+```{r, result="hide"}
+logistic <- multinom(star_individual_cate~type+takeout+reservation+outdoorseating+waiterservice+creditcards+goodforkids+goodforgroups+goodfordessert+goodforlatenight+goodforlunch+goodfordinner+goodforbrunch+goodforbreakfast+price+parking+noise+alcohol+wifi+popdensity_zip+income_zip+education_zip+age_zip+TMAX+TMIN+positivity_user,data=train_set)
+```
+
+```{r}
+logistic_pred= predict(logistic, newdata=test_set,type="class")
+logistic_accuracy<-confusionMatrix(data=logistic_pred, test_set$star_individual)$overall['Accuracy']
+accuracy_results <- data_frame(method = "Multinomial logistic regression", Accuracy = logistic_accuracy)
+accuracy_results
+```
+
+
+### Lasso for multinomial individual ratings
+
+```{r}
+x <- model.matrix(star_individual_cate ~ type + takeout + reservation + outdoorseating + waiterservice + creditcards + goodforkids + goodforgroups + goodfordessert + goodforlatenight + goodforlunch + goodfordinner + goodforbrunch + goodforbreakfast + price + parking + noise + alcohol + wifi + popdensity_zip + income_zip + education_zip + age_zip+TMAX+TMIN+positivity_user, train_set)[,-1]
+
+cvfit<- glmnet::cv.glmnet(x, train_set$star_individual,family="multinomial")
+
+x_test <- model.matrix(star_individual_cate ~ type + takeout + reservation + outdoorseating + waiterservice + creditcards + goodforkids + goodforgroups + goodfordessert + goodforlatenight + goodforlunch + goodfordinner + goodforbrunch + goodforbreakfast + price + parking + noise + alcohol + wifi + popdensity_zip + income_zip + education_zip + age_zip+TMAX+TMIN+positivity_user, test_set)[,-1]
+
+lasso_pred <- predict(cvfit, x_test,type="class")
+lasso_accuracy<-confusionMatrix(lasso_pred, test_set$star_individual)$overall['Accuracy']
+
+accuracy_results<- bind_rows(accuracy_results,
+                          data_frame(method="Lasso for multinomial individual ratings",  
+                                     Accuracy = lasso_accuracy ))
+accuracy_results %>% kable
+
+```
+
+
+### Classification Trees for individual ratings
+
+```{r}
+tree <- rpart(star_individual_cate ~ type + takeout + reservation + outdoorseating + waiterservice + creditcards + goodforkids + goodforgroups + goodfordessert + goodforlatenight + goodforlunch + goodfordinner + goodforbrunch + goodforbreakfast + price + parking + noise + alcohol + wifi + popdensity_zip + income_zip + education_zip + age_zip+TMAX+TMIN+positivity_user,method="class", data=train_set)
+ptree<- prune(tree, cp=   tree$cptable[which.min(tree$cptable[,"xerror"]),"CP"])
+tree_pred <- predict(ptree, test_set,type="class")
+tree_accuracy<-confusionMatrix(tree_pred, test_set$star_individual)$overall['Accuracy']
+
+accuracy_results<- bind_rows(accuracy_results,
+                          data_frame(method="Classification Tree for individual ratings",  
+                                     Accuracy = tree_accuracy ))
+accuracy_results %>% kable
+
+```
+
+
+### k nearest nighborhood for individual ratings
+
+```{r}
+knn_fit <- knn3(star_individual_cate~type+takeout+reservation+outdoorseating+waiterservice+creditcards+goodforkids+goodforgroups+goodfordessert+goodforlatenight+goodforlunch+goodfordinner+goodforbrunch+goodforbreakfast+price+parking+noise+alcohol+wifi+popdensity_zip+income_zip+education_zip+age_zip+TMIN+TMAX+positivity_user,data=train_set,k=10)
+
+knn_pred <- predict(knn_fit, newdata = test_set, type="class")
+knn_accuracy<-confusionMatrix(knn_pred, test_set$star_individual)$overall['Accuracy']
+accuracy_results<- bind_rows(accuracy_results,
+                          data_frame(method="k nearest neighborhood for individual ratings",  Accuracy = knn_accuracy ))
+accuracy_results %>% kable
+
+```
+
+
+### Random Forest for individual ratings
+
+```{r, eval = FALSE}
+rf_user<-randomForest(star_individual_cate~type+takeout+reservation+outdoorseating+waiterservice+creditcards+goodforkids+goodforgroups+goodfordessert+goodforlatenight+goodforlunch+goodfordinner+goodforbrunch+goodforbreakfast+price+parking+noise+alcohol+wifi+popdensity_zip+income_zip+education_zip+age_zip+TMAX+TMIN+positivity_user, data = train_set,importance=TRUE)
+print(rf_user)
+```
+
+```{r}
+load(file = 'rf_user.rda')
+rf_user_pred <- predict(rf_user, test_set,type="class")
+rf_accuracy<-confusionMatrix(rf_user_pred, test_set$star_individual)$overall['Accuracy']
+accuracy_results<- bind_rows(accuracy_results,
+                          data_frame(method="Random forest for individual ratings",  Accuracy = rf_accuracy ))
+accuracy_results %>% kable
+
+variable_importance <- importance(rf_user) 
+tmp <- data_frame(feature = rownames(variable_importance),
+                  Gini = variable_importance[,1]) %>%
+  arrange(desc(Gini))
+kable(tmp[1:15,])
+
+```
+
+
+## Recommendation for Specific Users
+
+In order to make recommendations for a specific user using rating data from many restaurants and users, we applied regularization, matrix decomposition and PCA to predict user-restaurant specific recommendations. 
+
+
+### Restricted and partitioned user data set
+
+Considering the fact that there are users who visited and rated the same restaurants more than once. For simplifying our anlaysis, we just considered their first rating.
+
+```{r}
+combine <- user[!duplicated(user[,c('user_id', 'business_id')]),] 
+size = round(0.1*NROW(combine))
+test <- sample_n(combine, size = size, replace = FALSE)
+train <- setdiff(combine, test)
+```
+
+### Predicting by average ratings
+
+We simply predicted every single rating to be the average rating.
+
+```{r}
+RMSE <- function(true_ratings, predicted_ratings){
+  sqrt(mean((true_ratings-predicted_ratings)^2))
+}
+mu <- mean(train$star_individual)
+naive_rmse <- RMSE(test$star_individual, 
+                   rep(mu, each=length(test$star_individual))
+                   )
+naive_rmse
+```
+
+### Accounting for differences between restaurants and users
+
+#### Restaurants difference
+To account for quality of restaurant, we added a term $b_i$ ("bias") to account for this and augment the model to
+$$ Y_{u,i} = \mu + b_i + \varepsilon_{u,i} $$
+
+```{r}
+lmd = 4
+business_means <- train %>%group_by(business_id) %>%
+  summarize(b_i = sum(star_individual-mu)/(n()+lmd))
+joined <- test %>%
+  left_join(business_means, by = 'business_id') %>%
+  replace_na(list(b_i = 0))
+model1_reg_rmse <- RMSE(joined$star_individual, mu+joined$b_i)
+model1_reg_rmse
+```
+
+#### Users difference
+
+Now we consider user-specific effects b_u:
+
+$$ Y_{u,i} = \mu + b_i + b_u + \varepsilon_{u,i} $$
+
+```{r}
+a = 7
+user_means <- train %>%
+  left_join(business_means, by = 'business_id') %>%
+  group_by(user_id) %>%summarize(b_u = sum(star_individual - mu - b_i)/(n()+a)) 
+joined <- test %>% 
+  left_join(business_means, by='business_id') %>% 
+  left_join(user_means, by='user_id') %>% 
+  replace_na(list(b_i=0, b_u=0))
+model2_reg_rmse <- RMSE(joined$star_individual, (mu + joined$b_i + joined$b_u))
+model2_reg_rmse
+```
+
+
+### Predicting by matrix decomposition 
+
+To estimate $\sum_{j=1}^p b_{j,i} X_{i,k}$, we will consider the residuals $Y_{u,i}-\hat{\mu}-\hat{b}_i-\hat{b}_u$.
+
+```{r}
+##Filter train dataset so that we have users who rated more than 50 times and restaurants that got voted more than 100 times. 
+train_small <- train %>%
+  filter(user_id %in% unique(test$user_id) & business_id %in% unique(test$business_id)) %>%
+  group_by(business_id) %>%filter(n() >= 100) %>% ungroup %>%
+  group_by(user_id) %>%filter(n() >= 50) %>%
+  ungroup
+train_small <- train_small %>%
+  left_join(business_means, by = 'business_id') %>% 
+  left_join(user_means, by = 'user_id') %>%
+  mutate(resids = star_individual - mu - b_i - b_u)
+
+## The NAs are put into zeros.
+Y <- train_small %>% 
+  select(user_id, business_id, resids) %>%
+  spread(business_id, resids) 
+business_ids <- data.frame(colnames(Y) %>% setdiff('user_id')) 
+colnames(business_ids) <- 'business_id'
+business_info <- train_small[!duplicated(train_small[,c('business_id')]),] 
+
+# create labels of business to plot on PCA
+business_feature <- business_ids %>% 
+                    left_join(business_info, by = 'business_id') %>%
+                    select(business_id, city, review_count, price, type, education_zip, population_zip) 
+                    
+user_ids <- Y[,1]
+Y <- Y[,-1]
+Y[is.na(Y)] <- 0
+pca <- prcomp(Y, center=TRUE, scale=TRUE)
+k <- 1
+pred <- pca$x[,1:k] %*% t(pca$rotation[,1:k])
+colnames(pred) <- colnames(Y)
+interaction <- 
+    data.frame(user_id = user_ids, pred, check.names=FALSE) %>% 
+    tbl_df %>%
+    gather(business_id, b_ui, -user_id) %>%
+    mutate(business_id = as.character(business_id),
+           user_id = as.character(user_id))
+joined <- test %>% 
+  left_join(business_means, by='business_id') %>% 
+  left_join(user_means, by='user_id') %>% 
+  left_join(interaction, by=c('business_id','user_id')) %>%
+  replace_na(list(b_i=0, b_u=0, b_ui=0))
+
+predicted_ratings <- mu + joined$b_i + joined$b_u + joined$b_ui
+matrix_decomp_model_rmse <- RMSE(predicted_ratings, test$star_individual)
+matrix_decomp_model_rmse
+```
+
+Summarize the RMSE 
+```{r}
+rmse_results <- data_frame(method = "Just the average", RMSE = naive_rmse)
+
+rmse_results <- bind_rows(rmse_results,
+                          data_frame(method="Restaurants Effect Model Lambda=4",  
+                                     RMSE = model1_reg_rmse))
+
+rmse_results <- bind_rows(rmse_results,
+                          data_frame(method="Restaurants and User Effect Model Alpha=7",
+                                     RMSE = model2_reg_rmse))
+
+rmse_results <- bind_rows(rmse_results,
+                          data_frame(method="Matrix Decomposition",  
+                                     RMSE = matrix_decomp_model_rmse))
+options(digits = 4)
+rmse_results %>% kable
+```
+
+One way to explain this inefficiency is because restaurants rated at Yelp are not that accessible to users. Certain users and restuarants of the same geographical location are grouped together. When it comes to the user-restaurant matrix, most residual values are along the diagonal, and there are a lot zeros in the rest elements.
+
+
+### Principal Component Analysis (PCA) for data visualisation
+Principal component analysis (PCA) is a technique used to emphasize variation and bring out strong patterns in a dataset. Here, we want to use PCA visualize potential pattern of the variables. 
+
+#### All cities
+```{r}
+tmp <- data.frame(pca$rotation, name = business_feature)
+tmp %>%  ggplot(aes(PC1, PC2, color = name.city)) + geom_point() 
+
+```
+
+The PC1-PC2 plot shows an interesting phenomenon: there seems to be one variable (PC1) that explains most of the variabilities among restaurants in Las Vegas, while restaurants in other cities are almost insensitive to this variable.On the other hand, PC2 explains most variances of those other restaurants, which is not the case in Las Vegas. Here we restricted our PCA analysis to Las Vegas.
+
+#### Only Las Vegas
+```{r}
+combine_LV <- combine %>%filter(city == 'Las Vegas')
+
+size = round(0.1*NROW(combine_LV))
+test_LV <- sample_n(combine_LV, size = size, replace = FALSE) 
+train_LV <- setdiff(combine_LV, test)
+
+train_small_LV <- train_LV %>%
+  filter(user_id %in% unique(test_LV$user_id) & business_id %in% unique(test_LV$business_id)) %>% group_by(business_id) %>%
+  filter(n() >= 120) %>% ungroup %>% group_by(user_id) %>%
+  filter(n() >= 25) %>% ungroup
+
+mu_LV <- mean(train_LV$star_individual)
+business_means <- train_LV %>%
+  group_by(business_id) %>%
+  summarize(b_i = sum(star_individual-mu_LV)/(n()+lmd))
+joined_LV <- test_LV %>%
+  left_join(business_means, by = 'business_id') %>%
+  replace_na(list(b_i = 0))
+user_means <- train_LV %>%
+  left_join(business_means, by = 'business_id') %>%
+  group_by(user_id) %>%
+  summarize(b_u = sum(star_individual - mu_LV - b_i)/(n()+a)) 
+ joined_LV <- test_LV %>% 
+  left_join(business_means, by='business_id') %>% 
+  left_join(user_means, by='user_id') %>% 
+  replace_na(list(b_i=0, b_u=0))
+train_small_LV <- train_small_LV %>%
+  left_join(business_means, by = 'business_id') %>% 
+  left_join(user_means, by = 'user_id') %>%
+  mutate(resids = star_individual - mu_LV - b_i - b_u)
+
+Y_LV <- train_small_LV %>% 
+  select(user_id, business_id, resids) %>%
+  spread(business_id, resids) 
+
+business_ids <- data.frame(colnames(Y_LV) %>% setdiff('user_id')) 
+colnames(business_ids) <- 'business_id'
+business_info <- train_small_LV[!duplicated(train_small_LV[,c('business_id')]),] 
+
+# create labels of business to plot on PCA
+business_feature <- business_ids %>% 
+                    left_join(business_info, by = 'business_id') %>%
+                    select(business_id, city, review_count, price, type, education_zip, population_zip, zip, stars, noise, parking, income_zip, popdensity_zip) 
+
+user_ids <- Y_LV[,1]
+Y_LV <- Y_LV[,-1]
+Y_LV[is.na(Y_LV)] <- 0
+
+pca_LV <- prcomp(Y_LV, center=TRUE, scale=TRUE)
+tmp_LV <- data.frame(pca_LV$rotation, name = business_feature)
+tmp_LV %>%  ggplot(aes(PC1, PC2, color =(name.income_zip))) + geom_point(aes(size = as.character(name.price))) 
+```
+
+ 
+From the PC1-PC2 we can see some rating preference related with local income and price of restaurants: high price (3-4 dollar signs) restaurants in medium income area tend to get lower ratings, while restaurants with reasonable price (1-2 dollar signs) receive higher ratings.Also,  most restaurants have price of 2-3 dollar sign, and they are less affected by local income.
+
+We tried other PC1-PC2 plots with different labels and colors. However, we could not see any significant pattern.
+
+
+## CONCLUSION
+
+#### Restaurants ratings analysis
+
+1.From variable selection methods, we could see that generally, features of restaurants such as, but not limited to, price, parking and noise rather than exogenous factors such as demographic characteristics of the region where restaurants locate were significant predictors of ratings. In addition, we also found that the types of food was also strongly associated with ratings. This results might show that users' preference for types of food is strongly correlated with their decision to chose restaurants and ratings.
+
+2.We also found that the model from Random Forest had the lowest RMSE. Otherwise, model performance was similar for other methods based on RMSE. Although RMSE values for stepwise and Lasso for a restricted dataset without Las Vegas were lower than that of the whole dataset, the differences were not big and they are higher than the RMSE of Random Forest. The comparativley better performance of Random Forest might be due to structural risk in our dataset such as outliers since other methods might not perform well because of those outliers. 
+
+#### Individual ratings analysis
+
+1. Lasso / Multinomial logistic regression performe better for predicting individual ratings than other methods in our dataset. However, all accurancies of the prediction is lower than 50%, which is not ideal. 
+
+2. From the vaiable importance of the random forest, we see that individuals who always give postive words in reviews tends to give higher ratings. Demographic characteristic are also have impact on the individual ratings.
+
+Low accuracies throughout all our predictions might be hard to explained. One possible reason could be the doubtful representativeness of the proxy for the quality of food and service. As we metioned above, sentiment of review text is subjective, and thus, it may be affected by many factors, not only users' preference and weather, but also by their personality (harsher or generous) and personal events which can affect on their mood. Since Yelp uses an overall rating system, we cannot figure it out on what the overall rating of a user is actully based. Therefore, for a better prediction of ratings and an improved recommendation for specific users, Yelp may use specified rating systems instead of overall. For example, if Yelp rating system includes several items to be evaluated by users such as quality of food, service and atmosphere, Yelp uesrs may get more clear ideas about specific restaurants.
+
+#### Recommendation for Specific Users
+
+Applying regularization and principle component analysis (PCA) improve our user-restaurant specific recommendation. The root-mean-square error dropped by 9.5% - 20% compared with a naive approach that only gives the average of all ratings. However, most of the improvement happens in regularization, and PCA improves very little or even not improving at all. There's also little pattern of user similarity observed in the first principle component plot, although in Las Vegas we observed a weak pattern of rating influenced by local income and restaurant price. A possible explanation is that by regularization most of the variances are explained. Some further exploration could be looking at user preference of food type and using k-nearest-neighbor to give type-specific recommendation.
+
