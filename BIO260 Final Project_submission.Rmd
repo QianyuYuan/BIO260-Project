@@ -5,9 +5,10 @@ date: "04 May 2016"
 output: html_document
 ---
 
-All original data and cleaned data can be accessed in:  https://drive.google.com/folderview?id=0B6Q4ObScQe3Wbm91d091amhSQ3c&usp=sharing
+All original data and cleaned data are available [here](https://drive.google.com/folderview?id=0B6Q4ObScQe3Wbm91d091amhSQ3c&usp=sharing).
 
-In order save time for Kniting HTML, we save results of several time-consuming process in the RDA file which also can be accessed in above linkage.
+In order to save time for Kniting HTML, we saveed outputs of several time-consuming processes in RDA formated files which are also available in the above link.
+
 
 # INTRODUCTION
 
@@ -18,15 +19,15 @@ Yelp, a multinational corporation, publishes crowd-sourced online reviews and ra
 
 Yelp uses 5-star rating, 1 - 5 stars, system for a local business, based on the mean of all star ratings given to the business. In a Yelp search, a star rating is most likely to influence on users' choice of local businesses to go as an economic research has shown that an extra half-star rating causes restaurants to sell out 19 percentage points (49%) more frequently [4]. However, people may be misled by the star rating since it may not only be influenced by quality of product or service, but also by other factors such as, but not limited to, price and atmosphere. Therefore, some users who priortize the quality of product or service compare to price might be disappointed if they find those local businesses' high star ratings were due to high quality with high price. In addition, researches show that weather affects mood, memory and cognitive performance of people [5,6], and users' demographic characteristics of a region are also related to the extent to which people's engagement in diverse types of online activities [7,8]. Since these exogenous factors that are not part of businesses features are also likely to affect users' ratings, we aim to investigate whether the ratings of businesses, especially restaurants, can be predicted not only based on characteristics of restaurants, but also those exogenous factors by using Yelp dataset.
 
-[1] http://www.yelp.com/about 
-[2] http://www.yelp.com/factsheet 
-[3] http://expandedramblings.com/index.php/yelp-statistics/ 
-[4] M. Anderson and J. Magruder. “Learning from the Crowd: Regression Discontinuity Estimates of the Effects of an Online Review Database.” The Economic Journal. 2011. 
-[5] M. A. Persinger. The weather matrix and human behavior. Praeger New York, 1980 
-[6] D. Watson. Mood and temperament. Guilford Press, 2000 
-[7] E. Hargittai. Digital Natives? Variation in Internet Skills and Uses among Members of the Net Generation. Sociological Inquiry, 80(1):92–113, 2010. 
-[8] E. Hargittai and Y.-l. P. Hsieh. Predictors and consequences of differentiated practices on social network sites. Information, Communication & Society, 13(4):515–536, 2010. 
-[9] https://www.yelp.com/dataset_challenge 
+[1] http://www.yelp.com/about  
+[2] http://www.yelp.com/factsheet  
+[3] http://expandedramblings.com/index.php/yelp-statistics/  
+[4] M. Anderson and J. Magruder. “Learning from the Crowd: Regression Discontinuity Estimates of the Effects of an Online Review Database.” The Economic Journal. 2011.  
+[5] M. A. Persinger. The weather matrix and human behavior. Praeger New York, 1980  
+[6] D. Watson. Mood and temperament. Guilford Press, 2000  
+[7] E. Hargittai. Digital Natives? Variation in Internet Skills and Uses among Members of the Net Generation. Sociological Inquiry, 80(1):92–113, 2010.  
+[8] E. Hargittai and Y.-l. P. Hsieh. Predictors and consequences of differentiated practices on social network sites. Information, Communication & Society, 13(4):515–536, 2010.  
+[9] https://www.yelp.com/dataset_challenge  
 
 
 ## Objectives
@@ -1020,19 +1021,18 @@ We tried other PC1-PC2 plots with different labels and colors. However, we could
 
 #### Restaurants ratings analysis
 
-1.From variable selection methods, we could see that generally, features of restaurants such as, but not limited to, price, parking and noise rather than exogenous factors such as demographic characteristics of the region where restaurants locate were significant predictors of ratings. In addition, we also found that the types of food was also strongly associated with ratings. This results might show that users' preference for types of food is strongly correlated with their decision to chose restaurants and ratings.
++ From variable selection methods, we could see that generally, features of restaurants such as, but not limited to, price, parking and noise rather than exogenous factors such as demographic characteristics of the region where restaurants locate were significant predictors of ratings. In addition, we also found that the types of food was also strongly associated with ratings. This results might show that users' preference for types of food is strongly correlated with their decision to chose restaurants and ratings.
 
-2.We also found that the model from Random Forest had the lowest RMSE. Otherwise, model performance was similar for other methods based on RMSE. Although RMSE values for stepwise and Lasso for a restricted dataset without Las Vegas were lower than that of the whole dataset, the differences were not big and they are higher than the RMSE of Random Forest. The comparativley better performance of Random Forest might be due to structural risk in our dataset such as outliers since other methods might not perform well because of those outliers. 
++ We also found that the model from Random Forest had the lowest RMSE. Otherwise, model performance was similar for other methods based on RMSE. Although RMSE values for stepwise and Lasso for a restricted dataset without Las Vegas were lower than that of the whole dataset, the differences were not big and they are higher than the RMSE of Random Forest. The comparativley better performance of Random Forest might be due to structural risk in our dataset such as outliers since other methods might not perform well because of those outliers. 
 
 #### Individual ratings analysis
 
-1. Lasso / Multinomial logistic regression performe better for predicting individual ratings than other methods in our dataset. However, all accurancies of the prediction is lower than 50%, which is not ideal. 
++ Lasso / Multinomial logistic regression performe better for predicting individual ratings than other methods in our dataset. However, all accurancies of the prediction is lower than 50%, which is not ideal. 
 
-2. From the vaiable importance of the random forest, we see that individuals who always give postive words in reviews tends to give higher ratings. Demographic characteristic are also have impact on the individual ratings.
++ From the vaiable importance of the random forest, we see that individuals who always give postive words in reviews tends to give higher ratings. Demographic characteristic are also have impact on the individual ratings.
 
-Low accuracies throughout all our predictions might be hard to explained. One possible reason could be the doubtful representativeness of the proxy for the quality of food and service. As we metioned above, sentiment of review text is subjective, and thus, it may be affected by many factors, not only users' preference and weather, but also by their personality (harsher or generous) and personal events which can affect on their mood. Since Yelp uses an overall rating system, we cannot figure it out on what the overall rating of a user is actully based. Therefore, for a better prediction of ratings and an improved recommendation for specific users, Yelp may use specified rating systems instead of overall. For example, if Yelp rating system includes several items to be evaluated by users such as quality of food, service and atmosphere, Yelp uesrs may get more clear ideas about specific restaurants.
+Low accuracies throughout all our predictions might not be explained easily. One possible reason could be the doubtful representativeness of the proxy for the quality of food and service. As we metioned above, sentiment of review text is subjective, and thus, it may be affected by many factors, not only users' preference and weather, but also by their personality (harsher or generous) and personal events which can affect on their mood. Since Yelp uses an overall rating system, we cannot figure it out on what the overall rating of a user is actully based. Therefore, for a better prediction of ratings and an improved recommendation for specific users, Yelp may use a specified rating system instead of the current overall rating system. For example, if Yelp's rating system includes several items to be evaluated by users such as quality of food, service and atmosphere, Yelp uesrs may get more clear ideas about restaurants.
 
 #### Recommendation for Specific Users
 
-Applying regularization and principle component analysis (PCA) improve our user-restaurant specific recommendation. The root-mean-square error dropped by 9.5% - 20% compared with a naive approach that only gives the average of all ratings. However, most of the improvement happens in regularization, and PCA improves very little or even not improving at all. There's also little pattern of user similarity observed in the first principle component plot, although in Las Vegas we observed a weak pattern of rating influenced by local income and restaurant price. A possible explanation is that by regularization most of the variances are explained. Some further exploration could be looking at user preference of food type and using k-nearest-neighbor to give type-specific recommendation.
-
+Applying regularization and principle component analysis (PCA) improved our user-restaurant specific recommendation. The root-mean-square error dropped by 9.5% - 20% compared to a naive approach that only gives the average of all ratings. However, most of the improvement in accuracy happens in the regularization, and PCA barely improved it. There was also little pattern of user similarity observed in the first principle component plot, although the restricted dataset to Las Vegas demonstrated a weak pattern of ratings influenced by local annual income level and price of restaurants. A possible explanation is that by regularization most of the variances are explained. Some further exploration could be looking at user preference for types of food and using k-nearest-neighbor to give type-specific recommendation.
